@@ -53,7 +53,12 @@
 
     const user = JSON.parse(localStorage.getItem('user'));
     const role = localStorage.getItem('role');
-    if(!user || role !== 'agent') window.location.href = 'index.html';
+   if (role !== 'agent') {
+  // don’t redirect instantly — wait to confirm session
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session) window.location.href = 'index.html';
+}
+
 
     const targetVal = document.getElementById('targetVal');
     const salesVal = document.getElementById('salesVal');
