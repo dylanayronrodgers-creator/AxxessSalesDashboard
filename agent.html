@@ -1,125 +1,258 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agent Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <title>Agent Dashboard | Axxess</title>
+  <link rel="stylesheet" href="styles.css" />
   <script type="module" src="supabase-config.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to bottom right, #041d3d, #062a5a);
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background: #062a5a;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .btn {
+      background: #00c3ff;
+      color: #041d3d;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .dashboard-section {
+      padding: 2rem;
+    }
+
+    .stats-card {
+      background: #0b3268;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-box {
+      background: #062a5a;
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-box h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: #00c3ff;
+    }
+
+    .stat-box p {
+      font-size: 1.5rem;
+      margin: 0.3rem 0 0;
+      font-weight: bold;
+    }
+
+    .sales-input {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      align-items: center;
+    }
+
+    input[type="number"] {
+      background: #041d3d;
+      color: white;
+      border: 1px solid #007bff;
+      padding: 0.4rem;
+      border-radius: 6px;
+      width: 120px;
+    }
+
+    .chat-box {
+      background: #0b3268;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 2rem;
+    }
+
+    .messages {
+      max-height: 250px;
+      overflow-y: auto;
+      background: #062a5a;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    .message {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background: #083064;
+      border-radius: 6px;
+    }
+
+    .message.reply {
+      background: #004c84;
+      margin-left: 1rem;
+    }
+
+    textarea {
+      width: 100%;
+      margin-top: 1rem;
+      border-radius: 8px;
+      background: #041d3d;
+      color: #fff;
+      border: 1px solid #007bff;
+      padding: 0.6rem;
+    }
+  </style>
 </head>
-<body class="dashboard">
+
+<body>
   <header>
     <h1>Agent Dashboard</h1>
-    <button id="logoutBtn">Logout</button>
+    <button id="logoutBtn" class="btn">Logout</button>
   </header>
 
-  <main>
-    <section class="stats">
-      <h2 id="agentName">Agent</h2>
-      <p>Target: R<span id="target">0</span></p>
-      <p>Sales: R<span id="sales">0</span></p>
-      <div class="progress-container">
-        <div id="progressBar" class="progress-bar"></div>
+  <section class="dashboard-section">
+    <div class="stats-card">
+      <h2>Your Performance</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <h3>Target (R)</h3>
+          <p id="targetDisplay">0</p>
+        </div>
+        <div class="stat-box">
+          <h3>Sales (R)</h3>
+          <p id="salesDisplay">0</p>
+        </div>
+        <div class="stat-box">
+          <h3>Progress</h3>
+          <p id="progressDisplay">0%</p>
+        </div>
       </div>
-      <p><span id="progressPercent">0%</span> of target achieved</p>
-    </section>
 
-    <section class="sales-form">
-      <h3>Log a New Sale</h3>
-      <form id="saleForm">
-        <label>Package Type:</label>
-        <input type="text" id="packageType" required placeholder="e.g. Fibre, Mobile">
+      <div class="sales-input">
+        <label for="saleAmount">Add Sale (R):</label>
+        <input id="saleAmount" type="number" placeholder="Enter amount" />
+        <button id="addSaleBtn" class="btn">Add</button>
+      </div>
+    </div>
 
-        <label>Amount (R):</label>
-        <input type="number" id="amount" required min="1">
-
-        <button type="submit">Submit Sale</button>
-      </form>
-    </section>
-
-    <section class="messages">
-      <h3>Messages</h3>
-      <div id="messagesList" class="message-list"></div>
-      <form id="replyForm">
-        <input type="text" id="replyInput" placeholder="Type your reply..." required>
-        <button type="submit">Send</button>
-      </form>
-    </section>
-  </main>
+    <div class="chat-box">
+      <h2>Messages</h2>
+      <div id="messages" class="messages"></div>
+      <textarea id="replyInput" placeholder="Reply to manager..."></textarea>
+      <button id="sendReplyBtn" class="btn">Send</button>
+    </div>
+  </section>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
     const user = JSON.parse(localStorage.getItem('user'));
-    if (!user) window.location.href = 'index.html';
+    if (!user) {
+      window.location.href = 'index.html';
+    }
 
-    const agentName = document.getElementById('agentName');
-    const targetEl = document.getElementById('target');
-    const salesEl = document.getElementById('sales');
-    const progressBar = document.getElementById('progressBar');
-    const progressPercent = document.getElementById('progressPercent');
+    const targetDisplay = document.getElementById('targetDisplay');
+    const salesDisplay = document.getElementById('salesDisplay');
+    const progressDisplay = document.getElementById('progressDisplay');
+    const saleAmount = document.getElementById('saleAmount');
+    const addSaleBtn = document.getElementById('addSaleBtn');
+    const messagesDiv = document.getElementById('messages');
+    const replyInput = document.getElementById('replyInput');
+    const sendReplyBtn = document.getElementById('sendReplyBtn');
 
-    const loadAgentData = async () => {
-      const { data, error } = await supabase.from('agents').select('*').eq('id', user.id).single();
-      if (error) return console.error(error);
-      const percent = data.target > 0 ? ((data.sales / data.target) * 100).toFixed(1) : 0;
-      agentName.textContent = data.name;
-      targetEl.textContent = data.target;
-      salesEl.textContent = data.sales;
-      progressBar.style.width = percent + '%';
-      progressPercent.textContent = percent + '%';
-    };
+    let agentData;
 
-    // Initial load
-    loadAgentData();
+    // Load agent data
+    async function loadAgent() {
+      const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).single();
+      if (error) {
+        console.error(error);
+        return;
+      }
+      agentData = data;
+      updateStats();
+    }
 
-    // Realtime updates
+    function updateStats() {
+      targetDisplay.textContent = agentData.target.toLocaleString();
+      salesDisplay.textContent = agentData.sales.toLocaleString();
+      const progress = agentData.target > 0 ? ((agentData.sales / agentData.target) * 100).toFixed(1) : 0;
+      progressDisplay.textContent = progress + '%';
+    }
+
+    await loadAgent();
+
+    // Listen for real-time updates to agent record
     supabase.channel('agent-updates')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'agents', filter: `id=eq.${user.id}` }, loadAgentData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents', filter: `email=eq.${user.email}` }, async () => {
+        await loadAgent();
+      })
       .subscribe();
 
-    // Submit sale form
-    document.getElementById('saleForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const packageType = document.getElementById('packageType').value;
-      const amount = parseFloat(document.getElementById('amount').value);
-      if (!amount) return alert('Please enter a valid amount.');
+    // Add sale
+    addSaleBtn.addEventListener('click', async () => {
+      const amount = Number(saleAmount.value);
+      if (!amount || amount <= 0) return alert('Enter a valid amount.');
 
-      const { error } = await supabase.from('sales_log').insert({ agent_id: user.id, package_type: packageType, amount });
-      if (error) alert('Error logging sale: ' + error.message);
-      else {
-        document.getElementById('packageType').value = '';
-        document.getElementById('amount').value = '';
-        alert('Sale logged successfully!');
+      const newSales = (agentData.sales || 0) + amount;
+      const { error } = await supabase.from('agents').update({ sales: newSales }).eq('id', agentData.id);
+      if (error) {
+        alert('Error updating sales');
+        console.error(error);
+        return;
       }
+      saleAmount.value = '';
+      loadAgent();
     });
 
-    // Load messages
-    const loadMessages = async () => {
-      const { data, error } = await supabase.from('messages').select('*').or(`to_id.eq.${user.id},to_id.is.null`).order('timestamp', { ascending: false });
-      if (error) return console.error(error);
-      const container = document.getElementById('messagesList');
-      container.innerHTML = data.map(m => `<div class='message'><b>${m.from_id === user.id ? 'You' : 'Manager'}:</b> ${m.content}</div>`).join('');
-    };
+    // Messaging
+    async function loadMessages() {
+      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+      if (error) console.error(error);
+      messagesDiv.innerHTML = '';
+      data.forEach(msg => {
+        const div = document.createElement('div');
+        div.classList.add('message');
+        if (msg.sender_role === 'agent') div.classList.add('reply');
+        div.textContent = `${msg.sender}: ${msg.text}`;
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-    loadMessages();
+    await loadMessages();
 
-    // Realtime message updates
-    supabase.channel('messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, loadMessages)
-      .subscribe();
-
-    // Reply form
-    document.getElementById('replyForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const content = document.getElementById('replyInput').value;
-      const { error } = await supabase.from('messages').insert({ from_id: user.id, content });
-      if (error) alert('Error sending message: ' + error.message);
-      else {
-        document.getElementById('replyInput').value = '';
-        loadMessages();
-      }
+    sendReplyBtn.addEventListener('click', async () => {
+      const text = replyInput.value.trim();
+      if (!text) return;
+      await supabase.from('messages').insert([{ sender: agentData.name, sender_role: 'agent', text }]);
+      replyInput.value = '';
+      loadMessages();
     });
+
+    supabase.channel('messages').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, loadMessages).subscribe();
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', async () => {
