@@ -88,16 +88,17 @@
       }, 450);
     });
 
-    // auto-redirect if session exists
-    window.addEventListener('load', async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        const role = localStorage.getItem('role') || 'agent';
-        if (role === 'tv') window.location.href = 'tv.html';
-        else if (role === 'manager') window.location.href = 'manager.html';
-        else window.location.href = 'agent.html';
-      }
-    });
+window.addEventListener('load', async () => {
+  const { data } = await supabase.auth.getSession();
+  if (data?.session) {
+    // only auto-redirect if we’re not already on a page
+    const role = localStorage.getItem('role');
+    if (role === 'manager') window.location.replace('manager.html');
+    else if (role === 'agent') window.location.replace('agent.html');
+    else if (role === 'tv') window.location.replace('tv.html');
+  }
+});
+
   </script>
 </body>
 </html>
