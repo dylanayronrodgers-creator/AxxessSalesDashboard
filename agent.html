@@ -1,265 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Agent Dashboard | Axxess</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Agent Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="supabase-config.js"></script>
-
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(to bottom right, #041d3d, #062a5a);
-      color: #fff;
-      margin: 0;
-      padding: 0;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem 2rem;
-      background: #062a5a;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    .btn {
-      background: #00c3ff;
-      color: #041d3d;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .dashboard-section {
-      padding: 2rem;
-    }
-
-    .stats-card {
-      background: #0b3268;
-      padding: 1rem;
-      border-radius: 10px;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-    }
-
-    .stat-box {
-      background: #062a5a;
-      padding: 1rem;
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    .stat-box h3 {
-      margin: 0;
-      font-size: 1rem;
-      color: #00c3ff;
-    }
-
-    .stat-box p {
-      font-size: 1.5rem;
-      margin: 0.3rem 0 0;
-      font-weight: bold;
-    }
-
-    .sales-input {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1rem;
-      align-items: center;
-    }
-
-    input[type="number"] {
-      background: #041d3d;
-      color: white;
-      border: 1px solid #007bff;
-      padding: 0.4rem;
-      border-radius: 6px;
-      width: 120px;
-    }
-
-    .chat-box {
-      background: #0b3268;
-      padding: 1rem;
-      border-radius: 10px;
-      margin-top: 2rem;
-    }
-
-    .messages {
-      max-height: 250px;
-      overflow-y: auto;
-      background: #062a5a;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-
-    .message {
-      margin-bottom: 0.5rem;
-      padding: 0.5rem;
-      background: #083064;
-      border-radius: 6px;
-    }
-
-    .message.reply {
-      background: #004c84;
-      margin-left: 1rem;
-    }
-
-    textarea {
-      width: 100%;
-      margin-top: 1rem;
-      border-radius: 8px;
-      background: #041d3d;
-      color: #fff;
-      border: 1px solid #007bff;
-      padding: 0.6rem;
-    }
+    .stats-grid{ display:flex; gap:12px; align-items:center; }
+    .stat { padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); width:180px; text-align:center; }
+    .sale-row{ margin-top:12px; display:flex; gap:8px; align-items:center; }
   </style>
 </head>
-
 <body>
-  <header>
-    <h1>Agent Dashboard</h1>
-    <button id="logoutBtn" class="btn">Logout</button>
-  </header>
+  <div class="container">
+    <div class="header">
+      <h1>Agent Dashboard</h1>
+      <div><button id="logoutBtn" class="logout">Logout</button></div>
+    </div>
 
-  <section class="dashboard-section">
-    <div class="stats-card">
-      <h2>Your Performance</h2>
+    <section class="panel glass">
       <div class="stats-grid">
-        <div class="stat-box">
-          <h3>Target (R)</h3>
-          <p id="targetDisplay">0</p>
+        <div class="stat">
+          <div class="small">Target (R)</div><div id="targetVal">0</div>
         </div>
-        <div class="stat-box">
-          <h3>Sales (R)</h3>
-          <p id="salesDisplay">0</p>
+        <div class="stat">
+          <div class="small">Sales (R)</div><div id="salesVal">0</div>
         </div>
-        <div class="stat-box">
-          <h3>Progress</h3>
-          <p id="progressDisplay">0%</p>
+        <div class="stat">
+          <div class="small">Progress</div><div id="progressVal">0%</div>
         </div>
       </div>
 
-      <div class="sales-input">
-        <label for="saleAmount">Add Sale (R):</label>
-        <input id="saleAmount" type="number" placeholder="Enter amount" />
-        <button id="addSaleBtn" class="btn">Add</button>
+      <div class="sale-row">
+        <input id="saleInput" class="input" type="number" placeholder="Amount (R)" />
+        <button id="addSaleBtn" class="btn">Add Sale</button>
       </div>
-    </div>
 
-    <div class="chat-box">
-      <h2>Messages</h2>
-      <div id="messages" class="messages"></div>
-      <textarea id="replyInput" placeholder="Reply to manager..."></textarea>
-      <button id="sendReplyBtn" class="btn">Send</button>
-    </div>
-  </section>
+      <div class="chat">
+        <h3>Messages</h3>
+        <div id="messagesArea" class="messages"></div>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <input id="replyInput" class="input" placeholder="Reply to manager..." />
+          <button id="replyBtn" class="btn">Send</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
     const user = JSON.parse(localStorage.getItem('user'));
-    if (!user) {
-      window.location.href = 'index.html';
-    }
+    const role = localStorage.getItem('role');
+    if(!user || role !== 'agent') window.location.href = 'index.html';
 
-    const targetDisplay = document.getElementById('targetDisplay');
-    const salesDisplay = document.getElementById('salesDisplay');
-    const progressDisplay = document.getElementById('progressDisplay');
-    const saleAmount = document.getElementById('saleAmount');
+    const targetVal = document.getElementById('targetVal');
+    const salesVal = document.getElementById('salesVal');
+    const progressVal = document.getElementById('progressVal');
+    const saleInput = document.getElementById('saleInput');
     const addSaleBtn = document.getElementById('addSaleBtn');
-    const messagesDiv = document.getElementById('messages');
+    const messagesArea = document.getElementById('messagesArea');
     const replyInput = document.getElementById('replyInput');
-    const sendReplyBtn = document.getElementById('sendReplyBtn');
+    const replyBtn = document.getElementById('replyBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
 
-    let agentData;
+    let agent;
 
-    // Load agent data
-    async function loadAgent() {
+    async function loadAgent(){
       const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).single();
-      if (error) {
-        console.error(error);
-        return;
-      }
-      agentData = data;
-      updateStats();
-    }
-
-    function updateStats() {
-      targetDisplay.textContent = agentData.target.toLocaleString();
-      salesDisplay.textContent = agentData.sales.toLocaleString();
-      const progress = agentData.target > 0 ? ((agentData.sales / agentData.target) * 100).toFixed(1) : 0;
-      progressDisplay.textContent = progress + '%';
+      if (error) { console.error(error); return; }
+      agent = data;
+      targetVal.textContent = (agent.target||0).toLocaleString();
+      salesVal.textContent = (agent.sales||0).toLocaleString();
+      const pct = agent.target>0 ? Math.min(100, (agent.sales/agent.target*100)).toFixed(1) : 0;
+      progressVal.textContent = pct + '%';
     }
 
     await loadAgent();
 
-    // Listen for real-time updates to agent record
-    supabase.channel('agent-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents', filter: `email=eq.${user.email}` }, async () => {
-        await loadAgent();
-      })
+    supabase.channel('agent-ch-'+user.id)
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'agents', filter:`email=eq.${user.email}` }, loadAgent)
       .subscribe();
 
-    // Add sale
+    // Add sale -> insert to sales_log then update agents.sales
     addSaleBtn.addEventListener('click', async () => {
-      const amount = Number(saleAmount.value);
-      if (!amount || amount <= 0) return alert('Enter a valid amount.');
-
-      const newSales = (agentData.sales || 0) + amount;
-      const { error } = await supabase.from('agents').update({ sales: newSales }).eq('id', agentData.id);
-      if (error) {
-        alert('Error updating sales');
-        console.error(error);
-        return;
-      }
-      saleAmount.value = '';
-      loadAgent();
+      const amount = Number(saleInput.value || 0);
+      if (!amount || amount <= 0) return alert('Enter a valid amount');
+      // insert into sales_log
+      const { error: e1 } = await supabase.from('sales_log').insert([{ agent_id: agent.id, package_type:'Manual', amount, date: new Date().toISOString() }]);
+      if (e1) return alert('Error logging sale: ' + e1.message);
+      // update agent total sales (trigger prevents decrease)
+      const newSales = Number(agent.sales||0) + amount;
+      const { error: e2 } = await supabase.from('agents').update({ sales: newSales }).eq('id', agent.id);
+      if (e2) return alert('Error updating agent: ' + e2.message);
+      saleInput.value='';
+      await loadAgent();
     });
 
-    // Messaging
-    async function loadMessages() {
-      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-      if (error) console.error(error);
-      messagesDiv.innerHTML = '';
-      data.forEach(msg => {
-        const div = document.createElement('div');
-        div.classList.add('message');
-        if (msg.sender_role === 'agent') div.classList.add('reply');
-        div.textContent = `${msg.sender}: ${msg.text}`;
-        messagesDiv.appendChild(div);
+    // Messages
+    async function loadMessages(){
+      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending:true });
+      if (error) { console.error(error); return; }
+      messagesArea.innerHTML = '';
+      data.forEach(m => {
+        const d = document.createElement('div');
+        d.className = 'msg' + (m.sender_role === 'agent' ? ' agent' : '');
+        d.innerHTML = `<strong>${m.sender}</strong><div class="small">${new Date(m.created_at).toLocaleString()}</div><div>${m.text}</div>`;
+        messagesArea.appendChild(d);
       });
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      messagesArea.scrollTop = messagesArea.scrollHeight;
     }
 
     await loadMessages();
+    supabase.channel('messages-ch').on('postgres_changes', { event:'*', schema:'public', table:'messages' }, loadMessages).subscribe();
 
-    sendReplyBtn.addEventListener('click', async () => {
+    replyBtn.addEventListener('click', async () => {
       const text = replyInput.value.trim();
-      if (!text) return;
-      await supabase.from('messages').insert([{ sender: agentData.name, sender_role: 'agent', text }]);
-      replyInput.value = '';
+      if(!text) return;
+      const { error } = await supabase.from('messages').insert([{ sender: user.email, sender_role:'agent', text, created_at: new Date().toISOString() }]);
+      if (error) return alert('Send failed: ' + error.message);
+      replyInput.value='';
       loadMessages();
     });
 
-    supabase.channel('messages').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, loadMessages).subscribe();
-
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
+    logoutBtn.addEventListener('click', async () => {
       await supabase.auth.signOut();
       localStorage.clear();
       window.location.href = 'index.html';
     });
+
   </script>
 </body>
 </html>
