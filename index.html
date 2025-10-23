@@ -3,52 +3,175 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Axxess Dashboard Login</title>
+  <title>Axxess Sales Dashboard Login</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #041d3d 0%, #00304f 50%, #005576 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .login-card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      width: 340px;
+      max-width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      color: #fff;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(40px);
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .login-card img {
+      width: 120px;
+      margin-bottom: 1rem;
+    }
+
+    .login-card h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      color: #00c3ff;
+    }
+
+    .login-card .subtitle {
+      font-size: 0.9rem;
+      color: #aacbd1;
+      margin-bottom: 1.5rem;
+    }
+
+    .login-card select,
+    .login-card input {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      margin-bottom: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-size: 0.95rem;
+    }
+
+    .login-card select {
+      appearance: none;
+    }
+
+    .login-card button {
+      width: 100%;
+      padding: 1rem;
+      background: #00c3ff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #041d3d;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.2);
+      transition: all 0.4s ease;
+    }
+
+    .login-card button:hover::before {
+      left: 0;
+    }
+
+    .login-card button:hover {
+      background: #00d8ff;
+    }
+
+    .login-card .status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #ffc;
+    }
+  </style>
   <script type="module" src="supabase-config.js"></script>
 </head>
-<body class="login-page">
-
-  <main class="login-container">
+<body>
+  <div class="login-card">
+    <img src="https://i.ibb.co/Wvkq30CR/logo.png" alt="Axxess Logo" />
     <h1>Axxess Sales Dashboard</h1>
     <p class="subtitle">Login to access your dashboard</p>
 
-    <div class="login-form">
-      <label for="roleSelect">Select Role</label>
-      <select id="roleSelect">
-        <option value="agent">Agent</option>
-        <option value="manager">Manager</option>
-        <option value="tv">TV Dashboard</option>
-      </select>
+    <select id="roleSelect">
+      <option value="agent">Agent</option>
+      <option value="manager">Manager</option>
+      <option value="tv">TV Dashboard</option>
+    </select>
 
-      <label for="emailInput">Email</label>
-      <input id="emailInput" type="email" placeholder="you@example.com" required />
+    <input id="emailInput" type="email" placeholder="Email" required />
+    <input id="passwordInput" type="password" placeholder="Password" required />
 
-      <label for="passwordInput">Password</label>
-      <input id="passwordInput" type="password" placeholder="••••••••" required />
-
-      <button id="loginBtn" class="btn-primary">Login</button>
-      <p id="statusMsg" class="status"></p>
-    </div>
-  </main>
+    <button id="loginBtn">Login</button>
+    <p id="statusMsg" class="status"></p>
+  </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
+    const roleSelect = document.getElementById('roleSelect');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
     const loginBtn = document.getElementById('loginBtn');
     const statusMsg = document.getElementById('statusMsg');
 
-    loginBtn.addEventListener('click', async () => {
-      const role = document.getElementById('roleSelect').value;
-      const email = document.getElementById('emailInput').value.trim();
-      const password = document.getElementById('passwordInput').value.trim();
+    roleSelect.addEventListener('change', () => {
+      if (roleSelect.value === 'tv') {
+        emailInput.style.display = 'none';
+        passwordInput.style.display = 'none';
+      } else {
+        emailInput.style.display = '';
+        passwordInput.style.display = '';
+      }
+    });
 
-      if (!email || !password) {
-        statusMsg.textContent = 'Please enter your email and password.';
+    loginBtn.addEventListener('click', async () => {
+      const role = roleSelect.value;
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (role !== 'tv' && (!email || !password)) {
+        statusMsg.textContent = 'Please enter both email and password.';
         return;
       }
 
-      statusMsg.textContent = 'Logging in...';
+      statusMsg.textContent = 'Logging in…';
+
+      if (role === 'tv') {
+        window.location.href = 'tv.html';
+        return;
+      }
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -56,42 +179,30 @@
       });
 
       if (error) {
-        console.error(error);
         statusMsg.textContent = 'Login failed: ' + error.message;
         return;
       }
 
-      // Store user and session persistently
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      statusMsg.textContent = 'Login successful! Redirecting...';
+      statusMsg.textContent = 'Login successful! Redirecting…';
 
-      // Redirect by role
-      if (role === 'manager') {
-        window.location.href = 'manager.html';
-      } else if (role === 'agent') {
-        window.location.href = 'agent.html';
-      } else {
-        window.location.href = 'tv.html';
-      }
+      setTimeout(() => {
+        if (role === 'manager') window.location.href = 'manager.html';
+        else window.location.href = 'agent.html';
+      }, 500);
     });
 
-    // --- Session recovery ---
-    // If a session already exists, redirect automatically
     window.addEventListener('load', async () => {
       const { data } = await supabase.auth.getSession();
-      const session = data?.session;
+      const session = data.session;
       if (session) {
-        const user = session.user;
-        localStorage.setItem('user', JSON.stringify(user));
-        // You can detect the role here if stored in metadata
+        const role = localStorage.getItem('role') || 'agent';
+        if (role === 'manager') window.location.href = 'manager.html';
+        else if (role === 'agent') window.location.href = 'agent.html';
+        else window.location.href = 'tv.html';
       }
     });
   </script>
-
-</body>
-</html>
-
-
 </body>
 </html>
