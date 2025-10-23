@@ -1,124 +1,70 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TV Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TV Wall - Axxess</title>
+  <link rel="stylesheet" href="styles.css" />
   <script type="module" src="supabase-config.js"></script>
   <style>
-    body {
-      background: #001b36;
-      color: white;
-      font-family: 'Poppins', sans-serif;
-      overflow: hidden;
-    }
-    .tv-header {
-      text-align: center;
-      font-size: 2em;
-      margin-top: 20px;
-      color: #00bcd4;
-    }
-    .team-section {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 40px;
-    }
-    .team-card {
-      background: rgba(255,255,255,0.1);
-      border-radius: 20px;
-      padding: 20px;
-      width: 45%;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
-    }
-    .team-card h2 {
-      text-align: center;
-      color: #00bcd4;
-    }
-    .agent-progress {
-      margin: 10px 0;
-      font-size: 1.1em;
-    }
-    .progress-bar {
-      background: rgba(255,255,255,0.2);
-      border-radius: 10px;
-      height: 20px;
-      margin-top: 5px;
-    }
-    .progress-fill {
-      background: #00bcd4;
-      height: 100%;
-      border-radius: 10px;
-      transition: width 0.5s ease;
-    }
-    .company-total {
-      text-align: center;
-      font-size: 1.5em;
-      margin-top: 40px;
-    }
+    body{ background: linear-gradient(180deg,#021a2e,#01263e); }
+    .tv { padding:30px; text-align:center; color:var(--accent); }
+    .teams { display:flex; gap:20px; justify-content:center; margin-top:22px; }
+    .team { background:rgba(255,255,255,0.03); padding:18px; border-radius:12px; width:420px; }
+    .agent-row{ display:flex; justify-content:space-between; gap:10px; margin:10px 0; align-items:center; }
+    .bar { background:rgba(255,255,255,0.06); height:14px; border-radius:8px; overflow:hidden; }
+    .fill { height:100%; background:var(--accent); transition:width .6s ease; }
+    .total { font-size:1.2rem; margin-top:18px; color:#fff; }
   </style>
 </head>
 <body>
-  <div class="tv-header">Axxess Live Sales Dashboard</div>
-
-  <div class="team-section">
-    <div class="team-card" id="salesTeam">
-      <h2>Sales Department</h2>
-      <div class="agent-list" id="salesList"></div>
+  <div class="tv">
+    <h1>Axxess Live Progress</h1>
+    <div class="teams">
+      <div id="salesTeam" class="team glass">
+        <h3>Sales Department</h3>
+        <div id="salesList"></div>
+      </div>
+      <div id="clientTeam" class="team glass">
+        <h3>Client Care</h3>
+        <div id="clientList"></div>
+      </div>
     </div>
-    <div class="team-card" id="clientCareTeam">
-      <h2>Client Care Department</h2>
-      <div class="agent-list" id="clientList"></div>
-    </div>
+    <div id="companyTotal" class="total">Total Progress: 0%</div>
   </div>
-
-  <div class="company-total" id="companyTotal">Total Company Progress: 0%</div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const salesList = document.getElementById('salesList');
-    const clientList = document.getElementById('clientList');
-    const companyTotal = document.getElementById('companyTotal');
+    async function render(){
+      const { data } = await supabase.from('agents').select('*');
+      const sales = data.filter(a => a.team === 'Sales');
+      const clients = data.filter(a => a.team === 'ClientCare');
 
-    async function loadDashboard() {
-      const { data, error } = await supabase.from('agents').select('id, name, team_id, sales, target');
-      if (error) return console.error(error);
+      function renderList(list, el){
+        el.innerHTML = '';
+        list.forEach(a => {
+          const pct = a.target>0 ? Math.min(100, (a.sales/a.target*100)).toFixed(1) : 0;
+          const row = document.createElement('div');
+          row.className = 'agent-row';
+          row.innerHTML = `<div>${a.name}</div><div style="width:50%"><div class="bar"><div class="fill" style="width:${pct}%;"></div></div></div><div>${pct}%</div>`;
+          el.appendChild(row);
+        });
+      }
 
-      const salesAgents = data.filter(a => a.team_id === 1);
-      const clientAgents = data.filter(a => a.team_id === 2);
+      renderList(sales, document.getElementById('salesList'));
+      renderList(clients, document.getElementById('clientList'));
 
-      const totalSales = data.reduce((sum, a) => sum + (a.sales || 0), 0);
-      const totalTargets = data.reduce((sum, a) => sum + (a.target || 0), 0);
-      const totalPercent = totalTargets > 0 ? ((totalSales / totalTargets) * 100).toFixed(1) : 0;
-
-      renderTeam(salesAgents, salesList);
-      renderTeam(clientAgents, clientList);
-      companyTotal.textContent = `Total Company Progress: ${totalPercent}%`;
+      const totalSales = data.reduce((s,a)=>s+(a.sales||0),0);
+      const totalTargets = data.reduce((s,a)=>s+(a.target||0),0);
+      const companyPct = totalTargets>0 ? (totalSales/totalTargets*100).toFixed(1) : 0;
+      document.getElementById('companyTotal').textContent = `Total Progress: ${companyPct}%`;
     }
 
-    function renderTeam(team, container) {
-      container.innerHTML = team.map(agent => {
-        const percent = agent.target > 0 ? ((agent.sales / agent.target) * 100).toFixed(1) : 0;
-        return `
-          <div class='agent-progress'>
-            <strong>${agent.name}</strong> — ${percent}%
-            <div class='progress-bar'><div class='progress-fill' style='width:${percent}%;'></div></div>
-          </div>`;
-      }).join('');
-    }
-
-    // Subscribe to live updates via Supabase Realtime
-    supabase.channel('tv-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, loadDashboard)
-      .subscribe();
-
-    loadDashboard();
-
-    // Auto-refresh every 30s as backup
-    setInterval(loadDashboard, 30000);
+    // realtime
+    supabase.channel('tv-ch').on('postgres_changes', { event:'*', schema:'public', table:'agents' }, render).subscribe();
+    await render();
+    setInterval(render, 30000);
   </script>
-
 </body>
 </html>
