@@ -59,65 +59,30 @@
     </div>
   </div>
 
-  <script type="module">
-    import { supabase } from './supabase-config.js';
+ <script type="module">
+import { supabase } from './supabase-config.js';
 
-    const roleEl = document.getElementById('role');
-    const agentBlock = document.getElementById('agentBlock');
-    const managerBlock = document.getElementById('managerBlock');
-    const agentSelect = document.getElementById('agentSelect');
-    const loginForm = document.getElementById('loginForm');
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('emailInput').value;
+  const password = document.getElementById('passwordInput').value;
+  const role = document.getElementById('roleSelect').value; // agent / manager / tv
 
-    roleEl.addEventListener('change', async () => {
-      const v = roleEl.value;
-      agentBlock.style.display = v === 'agent' ? 'block' : 'none';
-      managerBlock.style.display = v === 'manager' ? 'block' : 'none';
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-      if (v === 'agent') {
-        agentSelect.innerHTML = '<option>Loading...</option>';
-        const { data, error } = await supabase.from('agents').select('id,name,email');
-        if (error) { agentSelect.innerHTML = '<option>Error loading</option>'; return; }
-        agentSelect.innerHTML = '<option value="">Select agent...</option>';
-        data.forEach(a => agentSelect.insertAdjacentHTML('beforeend', `<option value="${a.id}" data-email="${a.email}">${a.name} (${a.email})</option>`));
-      }
+  if (error) return alert('Login failed: ' + error.message);
 
-      if (v === 'tv') {
-        // immediate redirect to TV page (no auth required)
-        window.location.href = 'tv.html';
-      }
-    });
+  // store session + user
+  localStorage.setItem('user', JSON.stringify(data.user));
 
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const role = roleEl.value;
-      if (!role) return alert('Choose a role');
+  // redirect by role
+  if (role === 'manager') window.location.href = 'manager.html';
+  else if (role === 'agent') window.location.href = 'agent.html';
+  else window.location.href = 'tv.html';
+});
+</script>
 
-      if (role === 'agent') {
-        const agentId = agentSelect.value;
-        if (!agentId) return alert('Pick an agent');
-        const opt = agentSelect.selectedOptions[0];
-        const email = opt.getAttribute('data-email');
-        const password = document.getElementById('agentPass').value;
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return alert(error.message);
-        // set metadata role
-        await supabase.auth.updateUser({ data: { app_role: 'agent' } });
-        localStorage.setItem('role','agent');
-        localStorage.setItem('userId', data.user.id);
-        window.location.href = 'agent.html';
-      }
-
-      if (role === 'manager') {
-        const email = document.getElementById('mgrEmail').value;
-        const password = document.getElementById('mgrPass').value;
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return alert(error.message);
-        await supabase.auth.updateUser({ data: { app_role: 'manager' } });
-        localStorage.setItem('role','manager');
-        localStorage.setItem('userId', data.user.id);
-        window.location.href = 'manager.html';
-      }
-    });
-  </script>
 </body>
 </html>
