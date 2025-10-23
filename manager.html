@@ -1,260 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Manager Dashboard | Axxess</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Manager Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="supabase-config.js"></script>
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(to bottom right, #041d3d, #062a5a);
-      color: #fff;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem 2rem;
-      background: #062a5a;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .btn {
-      background: #00c3ff;
-      color: #041d3d;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .dashboard-section {
-      padding: 2rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #0b3268;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    th, td {
-      text-align: left;
-      padding: 1rem;
-    }
-    th {
-      background: #083064;
-    }
-    tr:nth-child(even) {
-      background: #092b59;
-    }
-    input {
-      background: #041d3d;
-      color: white;
-      border: 1px solid #007bff;
-      padding: 0.4rem;
-      border-radius: 6px;
-      width: 100px;
-    }
-    .chat-box {
-      background: #0b3268;
-      padding: 1rem;
-      border-radius: 10px;
-      margin-top: 2rem;
-    }
-    .messages {
-      max-height: 200px;
-      overflow-y: auto;
-      background: #062a5a;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-    .message {
-      margin-bottom: 0.5rem;
-      padding: 0.5rem;
-      background: #083064;
-      border-radius: 6px;
-    }
-    .message.reply {
-      background: #004c84;
-      margin-left: 1rem;
-    }
+    .panel { padding:20px 0; }
+    .controls { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+    .table-wrap { margin-top:10px; overflow:auto; }
+    .table { min-width:900px; }
+    .modal-inner input, .modal-inner select { margin-bottom:10px; }
   </style>
 </head>
-
 <body>
-  <header>
-    <h1>Manager Dashboard</h1>
-    <button id="logoutBtn" class="btn">Logout</button>
-  </header>
-
-  <section class="dashboard-section">
-    <h2>Manage Agents</h2>
-    <button id="addAgentBtn" class="btn">Add Agent</button>
-    <button id="downloadBtn" class="btn">Download Report</button>
-
-    <table id="agentsTable">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Team</th>
-          <th>Target (R)</th>
-          <th>Sales (R)</th>
-          <th>Progress</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div class="chat-box">
-      <h2>Messages</h2>
-      <div id="messages" class="messages"></div>
-      <textarea id="messageInput" placeholder="Send message to agents..."></textarea>
-      <button id="sendBtn" class="btn">Send</button>
+  <div class="container">
+    <div class="header">
+      <h1>Manager Dashboard</h1>
+      <div>
+        <button id="logoutBtn" class="logout">Logout</button>
+      </div>
     </div>
-  </section>
+
+    <section class="panel glass">
+      <div class="controls">
+        <button id="addAgentBtn" class="btn">Add Agent</button>
+        <button id="downloadBtn" class="btn">Download Sales Report</button>
+        <div class="right small">Connected to Supabase</div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>Name</th><th>Email</th><th>Team</th><th>Target (R)</th><th>Sales (R)</th><th>Progress</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="agentsTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="chat">
+        <h3>Messages</h3>
+        <div id="messagesDiv" class="messages"></div>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <input id="broadcastInput" class="input" placeholder="Send a message to all agents..." />
+          <button id="broadcastBtn" class="btn">Send</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <!-- Add Agent Modal -->
-  <dialog id="addAgentModal">
-    <form method="dialog" id="addAgentForm">
-      <h3>Add Agent</h3>
-      <input id="agentName" placeholder="Name" required />
-      <input id="agentEmail" placeholder="Email" required />
-      <input id="agentPassword" placeholder="Password" required type="password" />
-      <input id="agentTeam" placeholder="Team" required />
-      <button type="submit" class="btn">Add</button>
-      <button type="button" id="closeModal" class="btn">Cancel</button>
-    </form>
-  </dialog>
+  <div id="addAgentModal" class="modal hidden">
+    <div class="modal-inner glass" style="padding:18px; width:420px;">
+      <h3 style="color:var(--accent); margin-top:0;">Add Agent</h3>
+      <form id="addAgentForm">
+        <input id="agentName" class="input" placeholder="Full name" required />
+        <input id="agentEmail" class="input" placeholder="Email" required />
+        <input id="agentPassword" class="input" placeholder="Temporary password" type="password" required />
+        <select id="agentTeam" class="input" required>
+          <option value="">Select team</option>
+          <option value="Sales">Sales</option>
+          <option value="ClientCare">ClientCare</option>
+        </select>
+        <div style="display:flex; gap:10px;">
+          <button type="submit" class="btn">Add</button>
+          <button type="button" id="cancelAdd" class="btn" style="background:transparent;border:2px solid var(--accent);color:var(--accent);">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
 
-    const agentsTableBody = document.querySelector('#agentsTable tbody');
-    const addAgentModal = document.querySelector('#addAgentModal');
-    const addAgentBtn = document.querySelector('#addAgentBtn');
-    const closeModal = document.querySelector('#closeModal');
-    const addAgentForm = document.querySelector('#addAgentForm');
-    const messageInput = document.querySelector('#messageInput');
-    const sendBtn = document.querySelector('#sendBtn');
-    const messagesDiv = document.querySelector('#messages');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const addAgentBtn = document.getElementById('addAgentBtn');
+    const addAgentModal = document.getElementById('addAgentModal');
+    const cancelAdd = document.getElementById('cancelAdd');
+    const addAgentForm = document.getElementById('addAgentForm');
+    const agentsTbody = document.getElementById('agentsTbody');
+    const broadcastInput = document.getElementById('broadcastInput');
+    const broadcastBtn = document.getElementById('broadcastBtn');
+    const messagesDiv = document.getElementById('messagesDiv');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    const user = JSON.parse(localStorage.getItem('user'));
+    const role = localStorage.getItem('role');
+
+    if (!user || role !== 'manager') {
+      window.location.href = 'index.html';
+    }
 
     // Load agents
-    async function loadAgents() {
-      const { data, error } = await supabase.from('agents').select('*');
-      if (error) console.error(error);
-      agentsTableBody.innerHTML = '';
-      data.forEach(agent => {
-        const progress = agent.target > 0 ? ((agent.sales / agent.target) * 100).toFixed(1) : 0;
-        const row = `
-          <tr>
-            <td>${agent.name}</td>
-            <td>${agent.email}</td>
-            <td>${agent.team}</td>
-            <td><input type="number" value="${agent.target}" data-id="${agent.id}" class="target-input" /></td>
-            <td>${agent.sales}</td>
-            <td>${progress}%</td>
-            <td><button class="btn deleteBtn" data-id="${agent.id}">Delete</button></td>
-          </tr>
+    async function loadAgents(){
+      const { data, error } = await supabase.from('agents').select('*').order('name');
+      if (error) { console.error(error); return; }
+      agentsTbody.innerHTML = '';
+      data.forEach(a => {
+        const percent = a.target > 0 ? ((a.sales / a.target) * 100).toFixed(1) : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${a.name}</td>
+          <td>${a.email}</td>
+          <td>${a.team || ''}</td>
+          <td><input class="input-target" data-id="${a.id}" value="${a.target || 0}" /></td>
+          <td>${a.sales || 0}</td>
+          <td>${percent}%</td>
+          <td><button class="btn deleteBtn" data-id="${a.id}">Delete</button></td>
         `;
-        agentsTableBody.insertAdjacentHTML('beforeend', row);
+        agentsTbody.appendChild(tr);
       });
     }
 
-    // Listen for updates
-    supabase.channel('agents-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, loadAgents)
-      .subscribe();
+    // Subscriptions: agents & messages
+    supabase.channel('agents-ch').on('postgres_changes', { event: '*', schema:'public', table:'agents' }, loadAgents).subscribe();
+    supabase.channel('messages-ch').on('postgres_changes', { event: '*', schema:'public', table:'messages' }, loadMessages).subscribe();
 
     await loadAgents();
+    await loadMessages();
 
-    // Add agent modal
-    addAgentBtn.addEventListener('click', () => addAgentModal.showModal());
-    closeModal.addEventListener('click', () => addAgentModal.close());
+    // Modal controls
+    addAgentBtn.addEventListener('click', ()=> addAgentModal.classList.remove('hidden'));
+    cancelAdd.addEventListener('click', ()=> addAgentModal.classList.add('hidden'));
 
-    addAgentForm.addEventListener('submit', async (e) => {
+    // Add agent - uses serverless /api/create-user to create auth user safely
+    addAgentForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const name = document.getElementById('agentName').value;
-      const email = document.getElementById('agentEmail').value;
-      const password = document.getElementById('agentPassword').value;
+      const name = document.getElementById('agentName').value.trim();
+      const email = document.getElementById('agentEmail').value.trim();
+      const password = document.getElementById('agentPassword').value.trim();
       const team = document.getElementById('agentTeam').value;
 
-      // Create agent in Supabase
-      const response = await fetch('/api/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const user = await response.json();
+      if(!name || !email || !password || !team) { alert('Fill all'); return; }
 
-      if (user.error) {
-        alert('Error creating user: ' + user.error.message);
-        return;
+      try {
+        // Create auth user server-side (recommended)
+        const resp = await fetch('/api/create-user', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        const j = await resp.json();
+        if (j.error) throw new Error(j.error.message || JSON.stringify(j.error));
+
+        // Insert agent row (use returned id if available)
+        const id = j.id || undefined;
+        const payload = { name, email, team, target:0, sales:0 };
+        if(id) payload.id = id;
+
+        const { error } = await supabase.from('agents').insert([payload]);
+        if (error) throw error;
+
+        addAgentModal.classList.add('hidden');
+        addAgentForm.reset();
+        loadAgents();
+      } catch(err){
+        alert('Add agent failed: ' + (err.message||err));
+        console.error(err);
       }
-
-      // Insert into agents table
-      await supabase.from('agents').insert([{ name, email, team, target: 0, sales: 0 }]);
-      addAgentModal.close();
-      loadAgents();
     });
 
-    // Update targets
-    document.body.addEventListener('change', async (e) => {
-      if (e.target.classList.contains('target-input')) {
-        const id = e.target.dataset.id;
-        const value = Number(e.target.value);
-        await supabase.from('agents').update({ target: value }).eq('id', id);
-      }
-    });
-
-    // Delete agent
+    // Delete & target update handlers (delegated)
     document.body.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('deleteBtn')) {
+      if(e.target.classList.contains('deleteBtn')){
         const id = e.target.dataset.id;
-        if (confirm('Delete this agent?')) {
-          await supabase.from('agents').delete().eq('id', id);
-          loadAgents();
-        }
+        if(!confirm('Delete agent?')) return;
+        const { error } = await supabase.from('agents').delete().eq('id', id);
+        if (error) return alert('Delete failed: ' + error.message);
+        loadAgents();
       }
     });
 
-    // Messaging system
-    async function loadMessages() {
-      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-      if (error) console.error(error);
+    document.body.addEventListener('change', async (e) => {
+      if (e.target.classList.contains('input-target')) {
+        const id = e.target.dataset.id;
+        const value = Number(e.target.value||0);
+        const { error } = await supabase.from('agents').update({ target: value }).eq('id', id);
+        if (error) alert('Update failed: ' + error.message);
+      }
+    });
+
+    // Messages
+    async function loadMessages(){
+      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending:true });
+      if (error) { console.error(error); return; }
       messagesDiv.innerHTML = '';
-      data.forEach(msg => {
+      data.forEach(m => {
         const div = document.createElement('div');
-        div.classList.add('message');
-        if (msg.sender_role === 'agent') div.classList.add('reply');
-        div.textContent = `${msg.sender}: ${msg.text}`;
+        div.className = 'msg' + (m.sender_role === 'agent' ? ' agent' : '');
+        div.innerHTML = `<strong>${m.sender}</strong><div class="small">${new Date(m.created_at).toLocaleString()}</div><div>${m.text}</div>`;
         messagesDiv.appendChild(div);
       });
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    await loadMessages();
-
-    sendBtn.addEventListener('click', async () => {
-      const text = messageInput.value.trim();
-      if (!text) return;
-      await supabase.from('messages').insert([{ sender: 'Manager', sender_role: 'manager', text }]);
-      messageInput.value = '';
-      loadMessages();
+    broadcastBtn.addEventListener('click', async () => {
+      const text = broadcastInput.value.trim();
+      if(!text) return;
+      const { error } = await supabase.from('messages').insert([{ sender: user.email, sender_role: 'manager', text, created_at: new Date().toISOString() }]);
+      if (error) alert('Send failed: ' + error.message);
+      else { broadcastInput.value=''; loadMessages(); }
     });
 
-    supabase.channel('messages').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, loadMessages).subscribe();
+    // download CSV
+    downloadBtn.addEventListener('click', async () => {
+      const { data, error } = await supabase.from('sales_log').select('agent_id, package_type, amount, date');
+      if (error || !data) return alert('Report error');
+      const csv = [Object.keys(data[0]).join(',')].concat(data.map(r => Object.values(r).join(','))).join('\n');
+      const blob = new Blob([csv], { type:'text/csv' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sales_report.csv'; a.click();
+    });
 
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
+    // logout
+    logoutBtn.addEventListener('click', async ()=> {
       await supabase.auth.signOut();
       localStorage.clear();
       window.location.href = 'index.html';
     });
+
   </script>
 </body>
 </html>
