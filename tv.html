@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="supabase-config.js"></script>
+  <style>
+    body {
+      background: #001b36;
+      color: white;
+      font-family: 'Poppins', sans-serif;
+      overflow: hidden;
+    }
+    .tv-header {
+      text-align: center;
+      font-size: 2em;
+      margin-top: 20px;
+      color: #00bcd4;
+    }
+    .team-section {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 40px;
+    }
+    .team-card {
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 20px;
+      width: 45%;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+    .team-card h2 {
+      text-align: center;
+      color: #00bcd4;
+    }
+    .agent-progress {
+      margin: 10px 0;
+      font-size: 1.1em;
+    }
+    .progress-bar {
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      height: 20px;
+      margin-top: 5px;
+    }
+    .progress-fill {
+      background: #00bcd4;
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    .company-total {
+      text-align: center;
+      font-size: 1.5em;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="tv-header">Axxess Live Sales Dashboard</div>
+
+  <div class="team-section">
+    <div class="team-card" id="salesTeam">
+      <h2>Sales Department</h2>
+      <div class="agent-list" id="salesList"></div>
+    </div>
+    <div class="team-card" id="clientCareTeam">
+      <h2>Client Care Department</h2>
+      <div class="agent-list" id="clientList"></div>
+    </div>
+  </div>
+
+  <div class="company-total" id="companyTotal">Total Company Progress: 0%</div>
+
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const salesList = document.getElementById('salesList');
+    const clientList = document.getElementById('clientList');
+    const companyTotal = document.getElementById('companyTotal');
+
+    async function loadDashboard() {
+      const { data, error } = await supabase.from('agents').select('id, name, team_id, sales, target');
+      if (error) return console.error(error);
+
+      const salesAgents = data.filter(a => a.team_id === 1);
+      const clientAgents = data.filter(a => a.team_id === 2);
+
+      const totalSales = data.reduce((sum, a) => sum + (a.sales || 0), 0);
+      const totalTargets = data.reduce((sum, a) => sum + (a.target || 0), 0);
+      const totalPercent = totalTargets > 0 ? ((totalSales / totalTargets) * 100).toFixed(1) : 0;
+
+      renderTeam(salesAgents, salesList);
+      renderTeam(clientAgents, clientList);
+      companyTotal.textContent = `Total Company Progress: ${totalPercent}%`;
+    }
+
+    function renderTeam(team, container) {
+      container.innerHTML = team.map(agent => {
+        const percent = agent.target > 0 ? ((agent.sales / agent.target) * 100).toFixed(1) : 0;
+        return `
+          <div class='agent-progress'>
+            <strong>${agent.name}</strong> — ${percent}%
+            <div class='progress-bar'><div class='progress-fill' style='width:${percent}%;'></div></div>
+          </div>`;
+      }).join('');
+    }
+
+    // Subscribe to live updates via Supabase Realtime
+    supabase.channel('tv-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, loadDashboard)
+      .subscribe();
+
+    loadDashboard();
+
+    // Auto-refresh every 30s as backup
+    setInterval(loadDashboard, 30000);
+  </script>
+
+</body>
+</html>
