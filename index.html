@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Axxess Sales - Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{ --primary:#007ACC; --accent:#0056B3; --bg:#f8f9fa; --text:#212529 }
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:var(--text)}
+    .card{border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="card p-4 shadow-sm">
+          <h3 class="mb-3 text-center" style="color:var(--primary)">Axxess Sales Dashboard</h3>
+          <form id="loginForm">
+            <div class="mb-3">
+              <label class="form-label">Role</label>
+              <select id="role" class="form-select" required>
+                <option value="">Choose...</option>
+                <option value="agent">Agent</option>
+                <option value="tv">TV</option>
+                <option value="manager">Management</option>
+              </select>
+            </div>
+
+            <div id="agentBlock" style="display:none">
+              <div class="mb-3">
+                <label class="form-label">Agent</label>
+                <select id="agentSelect" class="form-select"></select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input id="agentPass" type="password" class="form-control" />
+              </div>
+            </div>
+
+            <div id="managerBlock" style="display:none">
+              <div class="mb-3">
+                <label class="form-label">Manager Email</label>
+                <input id="mgrEmail" type="email" class="form-control" value="manager@axxess.co.za" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input id="mgrPass" type="password" class="form-control" />
+              </div>
+            </div>
+
+            <div class="d-grid">
+              <button id="loginBtn" class="btn" style="background:var(--primary); color:white">Login</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase-config.js';
+
+    const roleEl = document.getElementById('role');
+    const agentBlock = document.getElementById('agentBlock');
+    const managerBlock = document.getElementById('managerBlock');
+    const agentSelect = document.getElementById('agentSelect');
+    const loginForm = document.getElementById('loginForm');
+
+    roleEl.addEventListener('change', async () => {
+      const v = roleEl.value;
+      agentBlock.style.display = v === 'agent' ? 'block' : 'none';
+      managerBlock.style.display = v === 'manager' ? 'block' : 'none';
+
+      if (v === 'agent') {
+        agentSelect.innerHTML = '<option>Loading...</option>';
+        const { data, error } = await supabase.from('agents').select('id,name,email');
+        if (error) { agentSelect.innerHTML = '<option>Error loading</option>'; return; }
+        agentSelect.innerHTML = '<option value="">Select agent...</option>';
+        data.forEach(a => agentSelect.insertAdjacentHTML('beforeend', `<option value="${a.id}" data-email="${a.email}">${a.name} (${a.email})</option>`));
+      }
+
+      if (v === 'tv') {
+        // immediate redirect to TV page (no auth required)
+        window.location.href = 'tv.html';
+      }
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const role = roleEl.value;
+      if (!role) return alert('Choose a role');
+
+      if (role === 'agent') {
+        const agentId = agentSelect.value;
+        if (!agentId) return alert('Pick an agent');
+        const opt = agentSelect.selectedOptions[0];
+        const email = opt.getAttribute('data-email');
+        const password = document.getElementById('agentPass').value;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) return alert(error.message);
+        // set metadata role
+        await supabase.auth.updateUser({ data: { app_role: 'agent' } });
+        localStorage.setItem('role','agent');
+        localStorage.setItem('userId', data.user.id);
+        window.location.href = 'agent.html';
+      }
+
+      if (role === 'manager') {
+        const email = document.getElementById('mgrEmail').value;
+        const password = document.getElementById('mgrPass').value;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) return alert(error.message);
+        await supabase.auth.updateUser({ data: { app_role: 'manager' } });
+        localStorage.setItem('role','manager');
+        localStorage.setItem('userId', data.user.id);
+        window.location.href = 'manager.html';
+      }
+    });
+  </script>
+</body>
+</html>
