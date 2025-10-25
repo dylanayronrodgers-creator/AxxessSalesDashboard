@@ -1,227 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Manager Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Axxess Manager Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
-  <script type="module" src="supabase-config.js"></script>
+  <script type="module" src="https://esm.sh/@supabase/supabase-js@2"></script>
   <style>
-    .panel { padding:20px 0; }
-    .controls { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
-    .table-wrap { margin-top:10px; overflow:auto; }
-    .table { min-width:900px; }
-    .modal-inner input, .modal-inner select { margin-bottom:10px; }
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #001f3f, #001428);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      margin-top: 40px;
+      font-size: 2rem;
+      color: cyan;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); }
+      50% { text-shadow: 0 0 25px rgba(0, 255, 255, 1); }
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      width: 90%;
+      max-width: 900px;
+      margin-top: 20px;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    th {
+      color: cyan;
+    }
+
+    .btn {
+      background: cyan;
+      border: none;
+      color: #001428;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: #00ffffaa;
+      transform: scale(1.05);
+    }
+
+    .btn-danger {
+      background: #ff4b4b;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #ff6b6b;
+    }
+
+    #addAgentForm input {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+
+    #message {
+      margin-top: 10px;
+      color: cyan;
+      font-weight: bold;
+    }
+
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Manager Dashboard</h1>
-      <div>
-        <button id="logoutBtn" class="logout">Logout</button>
-      </div>
-    </div>
+  <h1>Manager Dashboard</h1>
 
-    <section class="panel glass">
-      <div class="controls">
-        <button id="addAgentBtn" class="btn">Add Agent</button>
-        <button id="downloadBtn" class="btn">Download Sales Report</button>
-        <div class="right small">Connected to Supabase</div>
-      </div>
-
-      <div class="table-wrap">
-        <table class="table">
-          <thead><tr>
-            <th>Name</th><th>Email</th><th>Team</th><th>Target (R)</th><th>Sales (R)</th><th>Progress</th><th>Actions</th>
-          </tr></thead>
-          <tbody id="agentsTbody"></tbody>
-        </table>
-      </div>
-
-      <div class="chat">
-        <h3>Messages</h3>
-        <div id="messagesDiv" class="messages"></div>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <input id="broadcastInput" class="input" placeholder="Send a message to all agents..." />
-          <button id="broadcastBtn" class="btn">Send</button>
-        </div>
-      </div>
-    </section>
+  <div class="glass">
+    <h2>Add Agent</h2>
+    <form id="addAgentForm">
+      <input type="text" id="name" placeholder="Name" required />
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <input type="text" id="team" placeholder="Team" />
+      <input type="number" id="target" placeholder="Target (R)" />
+      <button type="submit" class="btn">Add</button>
+    </form>
+    <div id="message"></div>
   </div>
 
-  <!-- Add Agent Modal -->
-  <div id="addAgentModal" class="modal hidden">
-    <div class="modal-inner glass" style="padding:18px; width:420px;">
-      <h3 style="color:var(--accent); margin-top:0;">Add Agent</h3>
-      <form id="addAgentForm">
-        <input id="agentName" class="input" placeholder="Full name" required />
-        <input id="agentEmail" class="input" placeholder="Email" required />
-        <input id="agentPassword" class="input" placeholder="Temporary password" type="password" required />
-        <select id="agentTeam" class="input" required>
-          <option value="">Select team</option>
-          <option value="Sales">Sales</option>
-          <option value="ClientCare">ClientCare</option>
-        </select>
-        <div style="display:flex; gap:10px;">
-          <button type="submit" class="btn">Add</button>
-          <button type="button" id="cancelAdd" class="btn" style="background:transparent;border:2px solid var(--accent);color:var(--accent);">Cancel</button>
-        </div>
-      </form>
-    </div>
+  <div class="glass">
+    <h2>Agent Performance</h2>
+    <table id="agentTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Team</th>
+          <th>Target (R)</th>
+          <th>Sales (R)</th>
+          <th>Progress</th>
+        </tr>
+      </thead>
+      <tbody id="agentList"></tbody>
+    </table>
   </div>
+
+  <button id="logoutBtn" class="btn btn-danger" style="margin-top:20px;">Logout</button>
 
   <script type="module">
-    import { supabase } from './supabase-config.js';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const SUPABASE_URL = 'https://dsxogtkqbqdobkshckjy.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeG9ndGtxYnFkb2Jrc2hja2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzkyOTMsImV4cCI6MjA3NjgxNTI5M30.Hcpx-DWykTsWY6kw0DyKaY2lppBfAk7X6MJKXeRHwMQ';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const logoutBtn = document.getElementById('logoutBtn');
-    const addAgentBtn = document.getElementById('addAgentBtn');
-    const addAgentModal = document.getElementById('addAgentModal');
-    const cancelAdd = document.getElementById('cancelAdd');
+    const agentList = document.getElementById('agentList');
+    const messageDiv = document.getElementById('message');
     const addAgentForm = document.getElementById('addAgentForm');
-    const agentsTbody = document.getElementById('agentsTbody');
-    const broadcastInput = document.getElementById('broadcastInput');
-    const broadcastBtn = document.getElementById('broadcastBtn');
-    const messagesDiv = document.getElementById('messagesDiv');
-    const downloadBtn = document.getElementById('downloadBtn');
 
-    const user = JSON.parse(localStorage.getItem('user'));
-    const role = localStorage.getItem('role');
-
-    if (!user || role !== 'manager') {
-      window.location.href = 'index.html';
+    // ✅ Fetch all agents
+    async function loadAgents() {
+      const { data, error } = await supabase.from('agents').select('*');
+      if (error) {
+        console.error(error);
+        return;
+      }
+      renderAgents(data);
     }
 
-    // Load agents
-    async function loadAgents(){
-      const { data, error } = await supabase.from('agents').select('*').order('name');
-      if (error) { console.error(error); return; }
-      agentsTbody.innerHTML = '';
-      data.forEach(a => {
-        const percent = a.target > 0 ? ((a.sales / a.target) * 100).toFixed(1) : 0;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${a.name}</td>
-          <td>${a.email}</td>
-          <td>${a.team || ''}</td>
-          <td><input class="input-target" data-id="${a.id}" value="${a.target || 0}" /></td>
-          <td>${a.sales || 0}</td>
-          <td>${percent}%</td>
-          <td><button class="btn deleteBtn" data-id="${a.id}">Delete</button></td>
+    function renderAgents(agents) {
+      agentList.innerHTML = '';
+      agents.forEach(agent => {
+        const progress = agent.target > 0 ? Math.min((agent.sales / agent.target) * 100, 100).toFixed(1) : 0;
+        const row = `
+          <tr>
+            <td>${agent.name}</td>
+            <td>${agent.team}</td>
+            <td>${agent.target.toLocaleString()}</td>
+            <td>${agent.sales.toLocaleString()}</td>
+            <td>${progress}%</td>
+          </tr>
         `;
-        agentsTbody.appendChild(tr);
+        agentList.innerHTML += row;
       });
     }
 
-    // Subscriptions: agents & messages
-    supabase.channel('agents-ch').on('postgres_changes', { event: '*', schema:'public', table:'agents' }, loadAgents).subscribe();
-    supabase.channel('messages-ch').on('postgres_changes', { event: '*', schema:'public', table:'messages' }, loadMessages).subscribe();
-
-    await loadAgents();
-    await loadMessages();
-
-    // Modal controls
-    addAgentBtn.addEventListener('click', ()=> addAgentModal.classList.remove('hidden'));
-    cancelAdd.addEventListener('click', ()=> addAgentModal.classList.add('hidden'));
-
-    // Add agent - uses serverless /api/create-user to create auth user safely
-    addAgentForm.addEventListener('submit', async (e)=>{
+    // ✅ Add new agent via /api/create-user
+    addAgentForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = document.getElementById('agentName').value.trim();
-      const email = document.getElementById('agentEmail').value.trim();
-      const password = document.getElementById('agentPassword').value.trim();
-      const team = document.getElementById('agentTeam').value;
-
-      if(!name || !email || !password || !team) { alert('Fill all'); return; }
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const team = document.getElementById('team').value.trim();
+      const target = parseFloat(document.getElementById('target').value || 0);
 
       try {
-        // Create auth user server-side (recommended)
-        const resp = await fetch('/api/create-user', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, password })
+        const res = await fetch('/api/create-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, team, target })
         });
-        const j = await resp.json();
-        if (j.error) throw new Error(j.error.message || JSON.stringify(j.error));
 
-        // Insert agent row (use returned id if available)
-        const id = j.id || undefined;
-        const payload = { name, email, team, target:0, sales:0 };
-        if(id) payload.id = id;
+        const data = await res.json();
 
-        const { error } = await supabase.from('agents').insert([payload]);
-        if (error) throw error;
-
-        addAgentModal.classList.add('hidden');
+        if (!res.ok) throw new Error(data.error || 'Failed to add agent');
+        messageDiv.textContent = `✅ Agent "${name}" added successfully!`;
+        messageDiv.style.color = 'lime';
         addAgentForm.reset();
         loadAgents();
-      } catch(err){
-        alert('Add agent failed: ' + (err.message||err));
-        console.error(err);
+      } catch (err) {
+        messageDiv.textContent = `❌ ${err.message}`;
+        messageDiv.style.color = 'red';
       }
     });
 
-    // Delete & target update handlers (delegated)
-    document.body.addEventListener('click', async (e) => {
-      if(e.target.classList.contains('deleteBtn')){
-        const id = e.target.dataset.id;
-        if(!confirm('Delete agent?')) return;
-        const { error } = await supabase.from('agents').delete().eq('id', id);
-        if (error) return alert('Delete failed: ' + error.message);
-        loadAgents();
-      }
-    });
-
-    document.body.addEventListener('change', async (e) => {
-      if (e.target.classList.contains('input-target')) {
-        const id = e.target.dataset.id;
-        const value = Number(e.target.value||0);
-        const { error } = await supabase.from('agents').update({ target: value }).eq('id', id);
-        if (error) alert('Update failed: ' + error.message);
-      }
-    });
-
-    // Messages
-    async function loadMessages(){
-      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending:true });
-      if (error) { console.error(error); return; }
-      messagesDiv.innerHTML = '';
-      data.forEach(m => {
-        const div = document.createElement('div');
-        div.className = 'msg' + (m.sender_role === 'agent' ? ' agent' : '');
-        div.innerHTML = `<strong>${m.sender}</strong><div class="small">${new Date(m.created_at).toLocaleString()}</div><div>${m.text}</div>`;
-        messagesDiv.appendChild(div);
-      });
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    broadcastBtn.addEventListener('click', async () => {
-      const text = broadcastInput.value.trim();
-      if(!text) return;
-      const { error } = await supabase.from('messages').insert([{ sender: user.email, sender_role: 'manager', text, created_at: new Date().toISOString() }]);
-      if (error) alert('Send failed: ' + error.message);
-      else { broadcastInput.value=''; loadMessages(); }
-    });
-
-    // download CSV
-    downloadBtn.addEventListener('click', async () => {
-      const { data, error } = await supabase.from('sales_log').select('agent_id, package_type, amount, date');
-      if (error || !data) return alert('Report error');
-      const csv = [Object.keys(data[0]).join(',')].concat(data.map(r => Object.values(r).join(','))).join('\n');
-      const blob = new Blob([csv], { type:'text/csv' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sales_report.csv'; a.click();
-    });
-
-    // logout
-    logoutBtn.addEventListener('click', async ()=> {
+    // ✅ Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
       await supabase.auth.signOut();
-      localStorage.clear();
+      localStorage.removeItem('session');
       window.location.href = 'index.html';
     });
 
+    // Auto-load
+    loadAgents();
+
+    // Refresh table every 10 seconds for live sync
+    setInterval(loadAgents, 10000);
   </script>
-</body>
-</html>
-
-
 </body>
 </html>
