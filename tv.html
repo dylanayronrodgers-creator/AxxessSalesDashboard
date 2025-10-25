@@ -1,70 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TV Wall - Axxess</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script type="module" src="supabase-config.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Axxess Live TV Dashboard</title>
+  <script type="module" src="https://esm.sh/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <style>
-    body{ background: linear-gradient(180deg,#021a2e,#01263e); }
-    .tv { padding:30px; text-align:center; color:var(--accent); }
-    .teams { display:flex; gap:20px; justify-content:center; margin-top:22px; }
-    .team { background:rgba(255,255,255,0.03); padding:18px; border-radius:12px; width:420px; }
-    .agent-row{ display:flex; justify-content:space-between; gap:10px; margin:10px 0; align-items:center; }
-    .bar { background:rgba(255,255,255,0.06); height:14px; border-radius:8px; overflow:hidden; }
-    .fill { height:100%; background:var(--accent); transition:width .6s ease; }
-    .total { font-size:1.2rem; margin-top:18px; color:#fff; }
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: radial-gradient(circle at top left, #001f3f, #000814);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-x: hidden;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 2.5rem;
+      color: cyan;
+      text-shadow: 0 0 15px rgba(0,255,255,0.6);
+      animation: titleGlow 4s ease-in-out infinite;
+    }
+
+    @keyframes titleGlow {
+      0%, 100% { text-shadow: 0 0 10px rgba(0,255,255,0.4); }
+      50% { text-shadow: 0 0 30px rgba(0,255,255,1); }
+    }
+
+    .clock {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      color: #ccc;
+      letter-spacing: 1px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 25px;
+      width: 90%;
+      max-width: 1300px;
+      margin-top: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(0, 255, 255, 0.3);
+    }
+
+    .name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: cyan;
+      margin-bottom: 8px;
+    }
+
+    .team {
+      color: #aaa;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .target, .sales {
+      font-size: 1rem;
+      margin: 3px 0;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, cyan, lime);
+      border-radius: 8px;
+      transition: width 1s ease-in-out;
+    }
+
+    footer {
+      margin-top: 40px;
+      font-size: 1.1rem;
+      color: cyan;
+      opacity: 0.8;
+      animation: fadeMotivation 12s linear infinite;
+    }
+
+    @keyframes fadeMotivation {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 1; }
+    }
+
   </style>
 </head>
 <body>
-  <div class="tv">
-    <h1>Axxess Live Progress</h1>
-    <div class="teams">
-      <div id="salesTeam" class="team glass">
-        <h3>Sales Department</h3>
-        <div id="salesList"></div>
-      </div>
-      <div id="clientTeam" class="team glass">
-        <h3>Client Care</h3>
-        <div id="clientList"></div>
-      </div>
-    </div>
-    <div id="companyTotal" class="total">Total Progress: 0%</div>
-  </div>
+  <h1>Axxess Live Sales Dashboard</h1>
+  <div class="clock" id="clock">Loading time...</div>
+
+  <div class="dashboard" id="dashboard"></div>
+
+  <footer id="motivation">You're smashing it today 💪</footer>
 
   <script type="module">
-    import { supabase } from './supabase-config.js';
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const SUPABASE_URL = 'https://dsxogtkqbqdobkshckjy.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeG9ndGtxYnFkb2Jrc2hja2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzkyOTMsImV4cCI6MjA3NjgxNTI5M30.Hcpx-DWykTsWY6kw0DyKaY2lppBfAk7X6MJKXeRHwMQ';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function render(){
-      const { data } = await supabase.from('agents').select('*');
-      const sales = data.filter(a => a.team === 'Sales');
-      const clients = data.filter(a => a.team === 'ClientCare');
+    const dashboard = document.getElementById('dashboard');
+    const motivation = document.getElementById('motivation');
 
-      function renderList(list, el){
-        el.innerHTML = '';
-        list.forEach(a => {
-          const pct = a.target>0 ? Math.min(100, (a.sales/a.target*100)).toFixed(1) : 0;
-          const row = document.createElement('div');
-          row.className = 'agent-row';
-          row.innerHTML = `<div>${a.name}</div><div style="width:50%"><div class="bar"><div class="fill" style="width:${pct}%;"></div></div></div><div>${pct}%</div>`;
-          el.appendChild(row);
-        });
+    const phrases = [
+      "You're smashing it today 💪",
+      "Keep hitting those targets 🚀",
+      "Numbers don’t lie – you’re on fire 🔥",
+      "Success is built one sale at a time 💼",
+      "Stay sharp. Stay winning 🧠"
+    ];
+    let phraseIndex = 0;
+
+    setInterval(() => {
+      phraseIndex = (phraseIndex + 1) % phrases.length;
+      motivation.textContent = phrases[phraseIndex];
+    }, 10000);
+
+    function updateClock() {
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const date = now.toLocaleDateString();
+      document.getElementById('clock').textContent = `${date} • ${time}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    async function loadAgents() {
+      const { data: agents, error } = await supabase.from('agents').select('*');
+      if (error) {
+        console.error('Error loading agents:', error);
+        return;
       }
-
-      renderList(sales, document.getElementById('salesList'));
-      renderList(clients, document.getElementById('clientList'));
-
-      const totalSales = data.reduce((s,a)=>s+(a.sales||0),0);
-      const totalTargets = data.reduce((s,a)=>s+(a.target||0),0);
-      const companyPct = totalTargets>0 ? (totalSales/totalTargets*100).toFixed(1) : 0;
-      document.getElementById('companyTotal').textContent = `Total Progress: ${companyPct}%`;
+      renderDashboard(agents);
     }
 
-    // realtime
-    supabase.channel('tv-ch').on('postgres_changes', { event:'*', schema:'public', table:'agents' }, render).subscribe();
-    await render();
-    setInterval(render, 30000);
+    function renderDashboard(agents) {
+      dashboard.innerHTML = '';
+      agents.forEach(agent => {
+        const progress = agent.target > 0 ? Math.min((agent.sales / agent.target) * 100, 100).toFixed(1) : 0;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="name">${agent.name}</div>
+          <div class="team">Team: ${agent.team || '—'}</div>
+          <div class="target">🎯 Target: R${(agent.target || 0).toLocaleString()}</div>
+          <div class="sales">💰 Sales: R${(agent.sales || 0).toLocaleString()}</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+          <div style="margin-top:5px; font-size:0.9rem;">${progress}% achieved</div>
+        `;
+        dashboard.appendChild(card);
+      });
+    }
+
+    // Initial load + periodic refresh
+    loadAgents();
+    setInterval(loadAgents, 5000);
+
+    // Real-time listener (optional if RLS is disabled)
+    supabase
+      .channel('realtime:agents')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, payload => {
+        loadAgents();
+      })
+      .subscribe();
   </script>
 </body>
 </html>
