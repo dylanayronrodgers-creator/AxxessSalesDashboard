@@ -1,157 +1,157 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Agent Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
   <script type="module" src="supabase-config.js"></script>
   <style>
-    .stats-grid{ display:flex; gap:12px; align-items:center; }
-    .stat { padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); width:180px; text-align:center; }
-    .sale-row{ margin-top:12px; display:flex; gap:8px; align-items:center; }
+    .stats-row{display:flex;gap:12px;margin-bottom:14px}
+    .stat{flex:1;padding:16px;border-radius:12px;background:rgba(255,255,255,0.02);text-align:center}
+    .action-row{display:flex;gap:12px;align-items:center}
+    .reply-row{display:flex;gap:12px;margin-top:12px}
+    #saleMsg{margin-top:8px}
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Agent Dashboard</h1>
-      <div><button id="logoutBtn" class="logout">Logout</button></div>
+      <div class="brand">
+        <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="Axxess Logo" class="dashboard-logo" onclick="location.href='index.html'">
+        <div><div class="small">Agent</div><div style="font-weight:700;color:#dff">Agent Dashboard</div></div>
+      </div>
+      <div>
+        <button id="logoutBtn" class="btn ghost">Logout</button>
+      </div>
     </div>
 
-    <section class="panel glass">
-      <div class="stats-grid">
-        <div class="stat">
-          <div class="small">Target (R)</div><div id="targetVal">0</div>
-        </div>
-        <div class="stat">
-          <div class="small">Sales (R)</div><div id="salesVal">0</div>
-        </div>
-        <div class="stat">
-          <div class="small">Progress</div><div id="progressVal">0%</div>
-        </div>
+    <div class="card">
+      <div class="stats-row">
+        <div class="stat"><div class="small">Monthly Target (R)</div><div id="targetVal">R0</div></div>
+        <div class="stat"><div class="small">Total Sales (R)</div><div id="salesVal">R0</div></div>
+        <div class="stat"><div class="small">Progress</div><div id="progressVal">0%</div></div>
       </div>
 
-      <div class="sale-row">
-        <input id="saleInput" class="input" type="number" placeholder="Amount (R)" />
-        <button id="addSaleBtn" class="btn">Add Sale</button>
+      <div class="card" style="padding:14px">
+        <div class="action-row">
+          <select id="packageType" class="input" style="min-width:320px;">
+            <option value="">Select package</option>
+            <option value="Fibre Uncapped 50Mbps">Fibre Uncapped 50Mbps - R599</option>
+            <option value="LTE 50GB">LTE 50GB - R299</option>
+            <option value="VoIP Activation">VoIP Activation - R99</option>
+            <option value="Other">Other</option>
+          </select>
+          <input id="amountInput" class="input" placeholder="Amount (R)" type="number" min="0" step="0.01">
+          <button id="logSaleBtn" class="btn">Add Sale</button>
+        </div>
+        <div id="saleMsg" class="small"></div>
       </div>
 
-      <div class="chat">
+      <div style="margin-top:16px">
         <h3>Messages</h3>
         <div id="messagesArea" class="messages"></div>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <input id="replyInput" class="input" placeholder="Reply to manager..." />
+        <div class="reply-row">
+          <input id="replyInput" class="input" placeholder="Reply to manager...">
           <button id="replyBtn" class="btn">Send</button>
         </div>
       </div>
-    </section>
+    </div>
   </div>
 
-  <script type="module">
-    import { supabase } from './supabase-config.js';
+<script type="module">
+  import { supabase } from './supabase-config.js';
 
-    const user = JSON.parse(localStorage.getItem('user'));
-    const role = localStorage.getItem('role');
-   if (role !== 'agent') {
-  // don’t redirect instantly — wait to confirm session
-  const { data } = await supabase.auth.getSession();
-  if (!data?.session) window.location.href = 'index.html';
-}
+  // require session
+  const { data: sdata } = await supabase.auth.getSession();
+  const session = sdata?.session;
+  if (!session) { location.href='index.html'; throw 'Not logged in'; }
+  const user = session.user;
 
+  const targetEl = document.getElementById('targetVal');
+  const salesEl = document.getElementById('salesVal');
+  const progressEl = document.getElementById('progressVal');
+  const packageTypeEl = document.getElementById('packageType');
+  const amountEl = document.getElementById('amountInput');
+  const logSaleBtn = document.getElementById('logSaleBtn');
+  const saleMsg = document.getElementById('saleMsg');
+  const messagesArea = document.getElementById('messagesArea');
+  const replyInput = document.getElementById('replyInput');
+  const replyBtn = document.getElementById('replyBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
 
-    const targetVal = document.getElementById('targetVal');
-    const salesVal = document.getElementById('salesVal');
-    const progressVal = document.getElementById('progressVal');
-    const saleInput = document.getElementById('saleInput');
-    const addSaleBtn = document.getElementById('addSaleBtn');
-    const messagesArea = document.getElementById('messagesArea');
-    const replyInput = document.getElementById('replyInput');
-    const replyBtn = document.getElementById('replyBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
+  let agentRow = null;
 
-    let agent;
+  async function loadAgent(){
+    const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).single();
+    if (error) { console.error(error); saleMsg.textContent='Unable to load agent'; return; }
+    agentRow = data;
+    targetEl.textContent = `R${Number(agentRow.target||0).toLocaleString()}`;
+    salesEl.textContent = `R${Number(agentRow.sales||0).toLocaleString()}`;
+    const pct = agentRow.target && Number(agentRow.target) > 0 ? Math.min(100,(Number(agentRow.sales||0)/Number(agentRow.target))*100) : 0;
+    progressEl.textContent = `${pct.toFixed(1)}%`;
+  }
 
-    async function loadAgent(){
-      const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).single();
-      if (error) { console.error(error); return; }
-      agent = data;
-      targetVal.textContent = (agent.target||0).toLocaleString();
-      salesVal.textContent = (agent.sales||0).toLocaleString();
-      const pct = agent.target>0 ? Math.min(100, (agent.sales/agent.target*100)).toFixed(1) : 0;
-      progressVal.textContent = pct + '%';
-    }
+  await loadAgent();
 
-    await loadAgent();
+  // Realtime subscriptions
+  const agentFilter = `id=eq.${agentRow?.id || 'null'}`;
+  supabase.channel(`agent-ch-${user.id}`)
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'agents', filter: agentFilter }, ()=>loadAgent())
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'sales_log' }, payload => {
+      if (payload?.new?.agent_id === agentRow?.id) loadAgent();
+    })
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, ()=>loadMessages())
+    .subscribe();
 
-    supabase.channel('agent-ch-'+user.id)
-      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'agents', filter:`email=eq.${user.email}` }, loadAgent)
-      .subscribe();
+  async function loadMessages(){
+    // messages where broadcast (to_id IS NULL) or to/from this agent
+    const { data, error } = await supabase.from('messages').select('*').or(`to_id.is.null,to_id.eq.${agentRow.id},from_id.eq.${agentRow.id}`).order('timestamp', { ascending: true });
+    if (error) { console.error(error); return; }
+    messagesArea.innerHTML = '';
+    (data||[]).forEach(m => {
+      const d = document.createElement('div'); d.className='msg';
+      const who = m.from_id === agentRow.id ? 'You' : (m.from_id ? 'Manager' : 'Manager');
+      d.innerHTML = `<div style="font-weight:700">${who}</div><div class="small">${new Date(m.timestamp).toLocaleString()}</div><div style="margin-top:6px">${m.content}</div>`;
+      messagesArea.appendChild(d);
+    });
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+  }
+  await loadMessages();
 
-    // Add sale -> insert to sales_log then update agents.sales
-    addSaleBtn.addEventListener('click', async () => {
-      const amount = Number(saleInput.value || 0);
-      if (!amount || amount <= 0) return alert('Enter a valid amount');
-      // insert into sales_log
-      // Insert sale
-const { data: saleData, error: saleError } = await supabase
-  .from('sales_log')
-  .insert([{ agent_id: user.id, amount, package_type: 'default', date: new Date().toISOString() }])
-  .select();
-
-if (saleError) return alert('Error logging sale: ' + saleError.message);
-
-// Increment total sales for that agent
-const { data: agentData, error: agentError } = await supabase
-  .rpc('increment_agent_sales', { agent_uuid: user.id, add_amount: amount });
-
-if (agentError) console.error('Error updating total sales:', agentError);
-else alert('Sale logged and progress updated!');
-
-      if (e1) return alert('Error logging sale: ' + e1.message);
-      // update agent total sales (trigger prevents decrease)
-      const newSales = Number(agent.sales||0) + amount;
-      const { error: e2 } = await supabase.from('agents').update({ sales: newSales }).eq('id', agent.id);
-      if (e2) return alert('Error updating agent: ' + e2.message);
-      saleInput.value='';
+  // log sale
+  logSaleBtn.addEventListener('click', async ()=>{
+    saleMsg.textContent=''; logSaleBtn.disabled = true; logSaleBtn.textContent='Logging...';
+    const pkg = packageTypeEl.value, amount = Number(amountEl.value||0);
+    if (!pkg) { saleMsg.textContent='Select a package'; logSaleBtn.disabled=false; logSaleBtn.textContent='Add Sale'; return; }
+    if (!amount || amount <= 0) { saleMsg.textContent='Enter a valid amount'; logSaleBtn.disabled=false; logSaleBtn.textContent='Add Sale'; return; }
+    try {
+      const { error: insertErr } = await supabase.from('sales_log').insert([{ agent_id: agentRow.id, package_type: pkg, amount, date: new Date().toISOString() }]);
+      if (insertErr) throw insertErr;
+      // call secure RPC to increment agents.sales
+      const { error: rpcErr } = await supabase.rpc('increment_agent_sales_secure', { agent_uuid: agentRow.id, add_amount: amount });
+      if (rpcErr) console.warn('RPC error', rpcErr);
       await loadAgent();
-    });
-
-    // Messages
-    async function loadMessages(){
-      const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending:true });
-      if (error) { console.error(error); return; }
-      messagesArea.innerHTML = '';
-      data.forEach(m => {
-        const d = document.createElement('div');
-        d.className = 'msg' + (m.sender_role === 'agent' ? ' agent' : '');
-        d.innerHTML = `<strong>${m.sender}</strong><div class="small">${new Date(m.created_at).toLocaleString()}</div><div>${m.text}</div>`;
-        messagesArea.appendChild(d);
-      });
-      messagesArea.scrollTop = messagesArea.scrollHeight;
+      saleMsg.style.color='lightgreen'; saleMsg.textContent = `Sale logged: ${pkg} R${amount}`;
+      packageTypeEl.selectedIndex = 0; amountEl.value='';
+    } catch (err) {
+      console.error(err);
+      saleMsg.style.color='salmon';
+      saleMsg.textContent = 'Error logging sale: ' + (err.message || JSON.stringify(err));
+    } finally {
+      logSaleBtn.disabled=false; logSaleBtn.textContent='Add Sale';
     }
+  });
 
-    await loadMessages();
-    supabase.channel('messages-ch').on('postgres_changes', { event:'*', schema:'public', table:'messages' }, loadMessages).subscribe();
+  // reply
+  replyBtn.addEventListener('click', async ()=>{
+    const text = replyInput.value.trim(); if (!text) return;
+    const { error } = await supabase.from('messages').insert([{ content: text, from_id: agentRow.id, to_id: null, timestamp: new Date().toISOString() }]);
+    if (error) return alert('Reply failed: '+error.message);
+    replyInput.value=''; loadMessages();
+  });
 
-    replyBtn.addEventListener('click', async () => {
-      const text = replyInput.value.trim();
-      if(!text) return;
-      const { error } = await supabase.from('messages').insert([{ sender: user.email, sender_role:'agent', text, created_at: new Date().toISOString() }]);
-      if (error) return alert('Send failed: ' + error.message);
-      replyInput.value='';
-      loadMessages();
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      localStorage.clear();
-      window.location.href = 'index.html';
-    });
-
-  </script>
-</body>
-</html>
-  </script>
+  logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); localStorage.clear(); location.href='index.html'; });
+</script>
 </body>
 </html>
