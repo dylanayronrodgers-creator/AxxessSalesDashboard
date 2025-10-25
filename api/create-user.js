@@ -11,23 +11,48 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, password } = req.body;
+    const { name, email, password, team, target } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Missing email or password' });
     }
 
+    // 1️⃣ Create the Supabase Auth user
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
     });
 
-    if (error) return res.status(400).json({ error });
+    if (error) {
+      console.error('Auth error:', error);
+      return res.status(400).json({ error: error.message });
+    }
 
+    const userId = data.user.id;
+
+    // 2️⃣ Add to agents table
+    const { error: insertError } = await supabaseAdmin
+      .from('agents')
+      .insert({
+        id: userId,
+        name: name || email.split('@')[0],
+        email,
+        team: team || 'Unassigned',
+        target: target || 0,
+        sales: 0,
+      });
+
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      return res.status(400).json({ error: insertError.message });
+    }
+
+    // 3️⃣ Return JSON success
     return res.status(200).json({
-      id: data.user.id,
-      email: data.user.email,
+      success: true,
+      id: userId,
+      email,
     });
   } catch (err) {
     console.error('Error creating user:', err);
