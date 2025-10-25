@@ -1,109 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Axxess Manager Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script type="module" src="https://esm.sh/@supabase/supabase-js@2"></script>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Manager Dashboard — Axxess</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="supabase-config.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #001f3f, #001428);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    h1 {
-      margin-top: 40px;
-      font-size: 2rem;
-      color: cyan;
-      text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
-      animation: pulse 3s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { text-shadow: 0 0 10px rgba(0, 255, 255, 0.6); }
-      50% { text-shadow: 0 0 25px rgba(0, 255, 255, 1); }
-    }
-
-    .glass {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(10px);
-      padding: 20px;
-      width: 90%;
-      max-width: 900px;
-      margin-top: 20px;
-      animation: fadeIn 0.8s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    th, td {
-      padding: 12px;
-      text-align: center;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    th {
-      color: cyan;
-    }
-
-    .btn {
-      background: cyan;
-      border: none;
-      color: #001428;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .btn:hover {
-      background: #00ffffaa;
-      transform: scale(1.05);
-    }
-
-    .btn-danger {
-      background: #ff4b4b;
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: #ff6b6b;
-    }
-
-    #addAgentForm input {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 8px;
-      border: none;
-      outline: none;
-    }
-
-    #message {
-      margin-top: 10px;
-      color: cyan;
-      font-weight: bold;
-    }
-
+    /* condensed styles for manager page (glass theme) */
+    body{font-family:Inter,system-ui,Arial;color:#fff;background:linear-gradient(180deg,#041a39,#021029);margin:0;padding:32px;}
+    h1{color:#00e0ff;text-align:center;text-shadow:0 6px 24px rgba(0,224,255,0.08)}
+    .glass{background:rgba(255,255,255,0.03);border-radius:14px;padding:18px;margin:20px auto;max-width:1100px;box-shadow:0 10px 40px rgba(0,0,0,0.45);backdrop-filter:blur(8px)}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .input, select{padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.03);color:#fff;min-width:160px}
+    .btn{background:#00e0ff;border:none;color:#00263e;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03);color:#dff}
+    th{color:#00e0ff}
+    .highlight-warning{background:linear-gradient(90deg, rgba(255,174,66,0.06), transparent);}
+    .highlight-good{background:linear-gradient(90deg, rgba(47,229,161,0.06), transparent);}
   </style>
 </head>
 <body>
@@ -111,113 +26,141 @@
 
   <div class="glass">
     <h2>Add Agent</h2>
-    <form id="addAgentForm">
-      <input type="text" id="name" placeholder="Name" required />
-      <input type="email" id="email" placeholder="Email" required />
-      <input type="password" id="password" placeholder="Password" required />
-      <input type="text" id="team" placeholder="Team" />
-      <input type="number" id="target" placeholder="Target (R)" />
-      <button type="submit" class="btn">Add</button>
-    </form>
-    <div id="message"></div>
+    <div class="row">
+      <input id="name" class="input" placeholder="Full name"/>
+      <input id="email" class="input" placeholder="email@example.com"/>
+      <input id="password" class="input" placeholder="temporary password"/>
+      <select id="teamSelect" class="input"><option value="">Loading teams…</option></select>
+      <input id="target" class="input" placeholder="Target (R)" type="number"/>
+      <button id="addBtn" class="btn">Add</button>
+    </div>
+    <div id="addMsg" style="margin-top:10px;color:#ffd;"></div>
   </div>
 
   <div class="glass">
-    <h2>Agent Performance</h2>
-    <table id="agentTable">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2>Agent Performance</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="monthPicker" type="month" class="input"/>
+        <button id="downloadBtn" class="btn">Download CSV</button>
+      </div>
+    </div>
+
+    <table>
       <thead>
-        <tr>
-          <th>Name</th>
-          <th>Team</th>
-          <th>Target (R)</th>
-          <th>Sales (R)</th>
-          <th>Progress</th>
-        </tr>
+        <tr><th>Name</th><th>Team</th><th>Target (R)</th><th>Month Sales (R)</th><th>Progress</th><th>Status</th></tr>
       </thead>
-      <tbody id="agentList"></tbody>
+      <tbody id="tbody"></tbody>
     </table>
   </div>
 
-  <button id="logoutBtn" class="btn btn-danger" style="margin-top:20px;">Logout</button>
+<script type="module">
+  import { supabase } from './supabase-config.js';
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    const SUPABASE_URL = 'https://dsxogtkqbqdobkshckjy.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeG9ndGtxYnFkb2Jrc2hja2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzkyOTMsImV4cCI6MjA3NjgxNTI5M30.Hcpx-DWykTsWY6kw0DyKaY2lppBfAk7X6MJKXeRHwMQ';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const teamSelect = document.getElementById('teamSelect');
+  const addBtn = document.getElementById('addBtn');
+  const addMsg = document.getElementById('addMsg');
+  const tbody = document.getElementById('tbody');
+  const monthPicker = document.getElementById('monthPicker');
+  const downloadBtn = document.getElementById('downloadBtn');
 
-    const agentList = document.getElementById('agentList');
-    const messageDiv = document.getElementById('message');
-    const addAgentForm = document.getElementById('addAgentForm');
+  // init month picker to current month
+  const now = new Date();
+  monthPicker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-    // ✅ Fetch all agents
-    async function loadAgents() {
-      const { data, error } = await supabase.from('agents').select('*');
-      if (error) {
-        console.error(error);
-        return;
-      }
-      renderAgents(data);
-    }
+  async function loadTeams(){
+    const { data, error } = await supabase.from('teams').select('*').order('id');
+    if (error) { console.error(error); teamSelect.innerHTML = '<option value="">—</option>'; return; }
+    teamSelect.innerHTML = '<option value="">Select Team (or leave blank)</option>';
+    data.forEach(t => {
+      const opt = document.createElement('option'); opt.value = t.id || t.name; opt.textContent = t.name; teamSelect.appendChild(opt);
+    });
+  }
+  await loadTeams();
 
-    function renderAgents(agents) {
-      agentList.innerHTML = '';
-      agents.forEach(agent => {
-        const progress = agent.target > 0 ? Math.min((agent.sales / agent.target) * 100, 100).toFixed(1) : 0;
-        const row = `
-          <tr>
-            <td>${agent.name}</td>
-            <td>${agent.team}</td>
-            <td>${agent.target.toLocaleString()}</td>
-            <td>${agent.sales.toLocaleString()}</td>
-            <td>${progress}%</td>
-          </tr>
-        `;
-        agentList.innerHTML += row;
+  async function loadAgentStats(year, month){
+    // compute month window
+    const start = new Date(year, month-1, 1).toISOString();
+    const end = new Date(year, month, 1).toISOString();
+
+    // agents
+    const { data: agents } = await supabase.from('agents').select('*').order('name');
+    // sales in month
+    const { data: salesRows } = await supabase.from('sales_log').select('agent_id, amount, date').gte('date', start).lt('date', end);
+
+    const sums = {};
+    (salesRows||[]).forEach(r => sums[r.agent_id] = (sums[r.agent_id]||0) + Number(r.amount||0));
+
+    tbody.innerHTML = '';
+    const today = new Date();
+    const day = today.getDate();
+    agents.forEach(a => {
+      const monthSales = sums[a.id] || 0;
+      const target = Number(a.target || 0);
+      const percent = target > 0 ? Math.min(100, (monthSales / target)*100) : 0;
+      const atRisk = (day >= 22 && percent < 60);
+      const status = percent >= 100 ? 'Met' : atRisk ? 'At Risk' : 'On Track';
+      const tr = document.createElement('tr');
+      tr.className = percent >= 100 ? 'highlight-good' : atRisk ? 'highlight-warning' : '';
+      tr.innerHTML = `<td>${a.name}</td><td>${a.team_id||'—'}</td><td>${Number(target).toLocaleString()}</td><td>${monthSales.toLocaleString()}</td><td>${percent.toFixed(1)}%</td><td>${status}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // initial load
+  (async ()=>{
+    const [y,m] = monthPicker.value.split('-');
+    await loadAgentStats(Number(y), Number(m));
+  })();
+
+  // realtime subscriptions
+  supabase.channel('manager-sub')
+    .on('postgres_changes', { event: '*', schema:'public', table:'agents' }, payload => {
+      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m));
+    })
+    .on('postgres_changes', { event: '*', schema:'public', table:'sales_log' }, payload => {
+      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m));
+    })
+    .subscribe();
+
+  addBtn.addEventListener('click', async () => {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const team_id = teamSelect.value || null;
+    const target = Number(document.getElementById('target').value || 0);
+    if (!email || !password) { addMsg.textContent = 'Email & password required'; addMsg.style.color='orange'; return; }
+    addMsg.textContent = 'Creating...';
+    try {
+      const res = await fetch('/api/create-user', {
+        method:'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify({ name, email, password, team_id, target })
       });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.message || 'Failed');
+      addMsg.textContent = `Created ${json.email}`;
+      addMsg.style.color='lightgreen';
+      document.getElementById('name').value=''; document.getElementById('email').value=''; document.getElementById('password').value=''; document.getElementById('target').value='';
+      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m));
+    } catch (err) {
+      addMsg.textContent = err.message; addMsg.style.color='salmon';
     }
+  });
 
-    // ✅ Add new agent via /api/create-user
-    addAgentForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const team = document.getElementById('team').value.trim();
-      const target = parseFloat(document.getElementById('target').value || 0);
+  monthPicker.addEventListener('change', ()=>{ const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m)); });
 
-      try {
-        const res = await fetch('/api/create-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, team, target })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || 'Failed to add agent');
-        messageDiv.textContent = `✅ Agent "${name}" added successfully!`;
-        messageDiv.style.color = 'lime';
-        addAgentForm.reset();
-        loadAgents();
-      } catch (err) {
-        messageDiv.textContent = `❌ ${err.message}`;
-        messageDiv.style.color = 'red';
-      }
-    });
-
-    // ✅ Logout
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      localStorage.removeItem('session');
-      window.location.href = 'index.html';
-    });
-
-    // Auto-load
-    loadAgents();
-
-    // Refresh table every 10 seconds for live sync
-    setInterval(loadAgents, 10000);
-  </script>
+  downloadBtn.addEventListener('click', async () => {
+    const [y,m] = monthPicker.value.split('-');
+    const start = new Date(Number(y), Number(m)-1, 1).toISOString();
+    const end = new Date(Number(y), Number(m), 1).toISOString();
+    const { data } = await supabase.from('sales_log').select('agent_id, package_type, amount, date').gte('date', start).lt('date', end);
+    if (!data || data.length === 0) return alert('No data for month');
+    const { data: agents } = await supabase.from('agents').select('id, name');
+    const map = {}; (agents||[]).forEach(a=>map[a.id]=a.name);
+    const rows = data.map(r => ({ agent: map[r.agent_id]||r.agent_id, package_type: r.package_type, amount: r.amount, date: r.date }));
+    const csv = [Object.keys(rows[0]).join(',')].concat(rows.map(r=>Object.values(r).map(v=>`"${v}"`).join(','))).join('\n');
+    const blob = new Blob([csv], { type:'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `sales_${y}_${m}.csv`; a.click();
+  });
+</script>
 </body>
 </html>
