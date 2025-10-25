@@ -1,157 +1,153 @@
-<!doctype html>
-<html>
+<!-- agent.html -->
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Agent Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
-  <script type="module" src="supabase-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    .stats-row{display:flex;gap:12px;margin-bottom:14px}
-    .stat{flex:1;padding:16px;border-radius:12px;background:rgba(255,255,255,0.02);text-align:center}
-    .action-row{display:flex;gap:12px;align-items:center}
-    .reply-row{display:flex;gap:12px;margin-top:12px}
-    #saleMsg{margin-top:8px}
+    :root{--bg:#ffffff;--card:#f5f8fb;--accent:#00c6d4;--text:#0b2b3a;--muted:#6b7c86}
+    body{margin:0;background:linear-gradient(180deg,#fff #f2f6fb);color:var(--text);font-family:Inter,system-ui}
+    header{display:flex;align-items:center;justify-content:space-between;padding:20px 40px}
+    .logo{display:flex;gap:12px;align-items:center}
+    .logo img{width:56px;height:56px;border-radius:8px}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    .card{background:var(--card);padding:22px;border-radius:12px;box-shadow:0 6px 20px rgba(14,30,37,0.06)}
+    .kpis{display:flex;gap:14px}
+    .kpi{flex:1;padding:18px;border-radius:10px;background:white;text-align:center}
+    .label{color:var(--muted);font-size:13px}
+    .value{font-weight:600;font-size:20px;margin-top:8px}
+    .row{display:flex;gap:12px;margin-top:14px}
+    select,input{padding:12px;border-radius:8px;border:1px solid #d7e2ea;background:white}
+    button{background:var(--accent);color:white;padding:10px 16px;border-radius:10px;border:none;cursor:pointer}
+    .messages{margin-top:18px}
+    .msg{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px}
+    .error{color:#c94a4a;margin-top:10px}
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="brand">
-        <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="Axxess Logo" class="dashboard-logo" onclick="location.href='index.html'">
-        <div><div class="small">Agent</div><div style="font-weight:700;color:#dff">Agent Dashboard</div></div>
-      </div>
-      <div>
-        <button id="logoutBtn" class="btn ghost">Logout</button>
-      </div>
+<header>
+  <div class="logo"><img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="logo"><div><div style="font-size:12px;color:var(--muted)">Agent</div><div style="font-weight:700">Agent Dashboard</div></div></div>
+  <div><button id="logoutBtn">Logout</button></div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="kpis">
+      <div class="kpi"><div class="label">Monthly Target (R)</div><div id="targetVal" class="value">R0</div></div>
+      <div class="kpi"><div class="label">Total Sales (R)</div><div id="salesVal" class="value">R0</div></div>
+      <div class="kpi"><div class="label">Progress</div><div id="progressVal" class="value">0.0%</div></div>
     </div>
 
-    <div class="card">
-      <div class="stats-row">
-        <div class="stat"><div class="small">Monthly Target (R)</div><div id="targetVal">R0</div></div>
-        <div class="stat"><div class="small">Total Sales (R)</div><div id="salesVal">R0</div></div>
-        <div class="stat"><div class="small">Progress</div><div id="progressVal">0%</div></div>
-      </div>
+    <div class="row" style="margin-top:18px">
+      <select id="package">
+        <option value="Fibre Uncapped 50Mbps|599">Fibre Uncapped 50Mbps - R599</option>
+        <option value="LTE 50GB|299">LTE 50GB - R299</option>
+        <option value="5G Starter|379">5G Starter - R379</option>
+        <option value="VoIP Activation|99">VoIP Activation - R99</option>
+      </select>
+      <input id="amount" type="number" value="599" style="width:150px"/>
+      <button id="addSaleBtn">Add Sale</button>
+    </div>
 
-      <div class="card" style="padding:14px">
-        <div class="action-row">
-          <select id="packageType" class="input" style="min-width:320px;">
-            <option value="">Select package</option>
-            <option value="Fibre Uncapped 50Mbps">Fibre Uncapped 50Mbps - R599</option>
-            <option value="LTE 50GB">LTE 50GB - R299</option>
-            <option value="VoIP Activation">VoIP Activation - R99</option>
-            <option value="Other">Other</option>
-          </select>
-          <input id="amountInput" class="input" placeholder="Amount (R)" type="number" min="0" step="0.01">
-          <button id="logSaleBtn" class="btn">Add Sale</button>
-        </div>
-        <div id="saleMsg" class="small"></div>
-      </div>
+    <div id="error" class="error" role="alert"></div>
 
-      <div style="margin-top:16px">
-        <h3>Messages</h3>
-        <div id="messagesArea" class="messages"></div>
-        <div class="reply-row">
-          <input id="replyInput" class="input" placeholder="Reply to manager...">
-          <button id="replyBtn" class="btn">Send</button>
-        </div>
+    <div class="messages">
+      <h3>Messages</h3>
+      <div id="messagesList"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <input id="replyText" placeholder="Reply to manager..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #d7e2ea"/>
+        <button id="sendReply">Send</button>
       </div>
     </div>
   </div>
+</div>
 
 <script type="module">
-  import { supabase } from './supabase-config.js';
+import { supabase } from './supabase-config.js';
+const userId = localStorage.getItem('userId');
+if(!userId) window.location.href = 'index.html';
 
-  // require session
-  const { data: sdata } = await supabase.auth.getSession();
-  const session = sdata?.session;
-  if (!session) { location.href='index.html'; throw 'Not logged in'; }
-  const user = session.user;
+const targetEl = document.getElementById('targetVal');
+const salesEl = document.getElementById('salesVal');
+const progressEl = document.getElementById('progressVal');
+const errorEl = document.getElementById('error');
+const messagesList = document.getElementById('messagesList');
 
-  const targetEl = document.getElementById('targetVal');
-  const salesEl = document.getElementById('salesVal');
-  const progressEl = document.getElementById('progressVal');
-  const packageTypeEl = document.getElementById('packageType');
-  const amountEl = document.getElementById('amountInput');
-  const logSaleBtn = document.getElementById('logSaleBtn');
-  const saleMsg = document.getElementById('saleMsg');
-  const messagesArea = document.getElementById('messagesArea');
-  const replyInput = document.getElementById('replyInput');
-  const replyBtn = document.getElementById('replyBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
+let agentData = null;
 
-  let agentRow = null;
+async function loadAgent(){
+  const { data, error } = await supabase.from('agents').select('*').eq('id', userId).single();
+  if (error) { errorEl.textContent = error.message; return; }
+  agentData = data;
+  targetEl.textContent = `R${Number(agentData.target||0).toLocaleString()}`;
+  salesEl.textContent = `R${Number(agentData.sales||0).toLocaleString()}`;
+  const pct = agentData.target > 0 ? ((Number(agentData.sales||0) / Number(agentData.target)) * 100) : 0;
+  progressEl.textContent = `${pct.toFixed(1)}%`;
+}
 
-  async function loadAgent(){
-    const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).single();
-    if (error) { console.error(error); saleMsg.textContent='Unable to load agent'; return; }
-    agentRow = data;
-    targetEl.textContent = `R${Number(agentRow.target||0).toLocaleString()}`;
-    salesEl.textContent = `R${Number(agentRow.sales||0).toLocaleString()}`;
-    const pct = agentRow.target && Number(agentRow.target) > 0 ? Math.min(100,(Number(agentRow.sales||0)/Number(agentRow.target))*100) : 0;
-    progressEl.textContent = `${pct.toFixed(1)}%`;
+async function loadMessages(){
+  const { data } = await supabase.from('messages').select('*').or(`to_id.eq.${userId},to_id.is.null`).order('timestamp',{ascending:false});
+  messagesList.innerHTML = (data||[]).map(m => `<div class="msg"><div style="font-weight:600">${m.from_id === userId ? 'You':'Manager'}</div><div style="font-size:12px;color:#6b7c86">${new Date(m.timestamp).toLocaleString()}</div><div style="margin-top:6px">${m.content}</div></div>`).join('') || '<div>No messages</div>';
+}
+
+document.getElementById('package').addEventListener('change', (e)=>{
+  const parts = e.target.value.split('|');
+  document.getElementById('amount').value = parts[1] || '';
+});
+
+document.getElementById('addSaleBtn').addEventListener('click', async ()=>{
+  errorEl.textContent = '';
+  const pkg = document.getElementById('package').value.split('|')[0];
+  const amount = Number(document.getElementById('amount').value || 0);
+  if(!amount || amount <=0) { errorEl.textContent='Enter a valid amount'; return; }
+
+  // insert sales_log row (RLS policy allows agent to insert their own rows)
+  const { error: insertError } = await supabase.from('sales_log').insert({
+    agent_id: userId,
+    package_type: pkg,
+    amount
+  });
+
+  if (insertError) {
+    errorEl.textContent = `Error logging sale: ${insertError.message}`;
+    return;
   }
 
+  // Call secure RPC to increment agents.sales (server-side security definer)
+  const { error: rpcError } = await supabase.rpc('increment_agent_sales_secure', { agent_uuid: userId, add_amount: amount });
+  if (rpcError) {
+    errorEl.textContent = `Error incrementing agent sales: ${rpcError.message}`;
+    return;
+  }
+
+  // refresh
   await loadAgent();
+});
 
-  // Realtime subscriptions
-  const agentFilter = `id=eq.${agentRow?.id || 'null'}`;
-  supabase.channel(`agent-ch-${user.id}`)
-    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'agents', filter: agentFilter }, ()=>loadAgent())
-    .on('postgres_changes', { event:'INSERT', schema:'public', table:'sales_log' }, payload => {
-      if (payload?.new?.agent_id === agentRow?.id) loadAgent();
-    })
-    .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, ()=>loadMessages())
-    .subscribe();
-
-  async function loadMessages(){
-    // messages where broadcast (to_id IS NULL) or to/from this agent
-    const { data, error } = await supabase.from('messages').select('*').or(`to_id.is.null,to_id.eq.${agentRow.id},from_id.eq.${agentRow.id}`).order('timestamp', { ascending: true });
-    if (error) { console.error(error); return; }
-    messagesArea.innerHTML = '';
-    (data||[]).forEach(m => {
-      const d = document.createElement('div'); d.className='msg';
-      const who = m.from_id === agentRow.id ? 'You' : (m.from_id ? 'Manager' : 'Manager');
-      d.innerHTML = `<div style="font-weight:700">${who}</div><div class="small">${new Date(m.timestamp).toLocaleString()}</div><div style="margin-top:6px">${m.content}</div>`;
-      messagesArea.appendChild(d);
-    });
-    messagesArea.scrollTop = messagesArea.scrollHeight;
-  }
+document.getElementById('sendReply').addEventListener('click', async ()=>{
+  const text = document.getElementById('replyText').value.trim();
+  if(!text) return;
+  const { error } = await supabase.from('messages').insert({
+    content: text,
+    from_id: userId,
+    to_id: null -- // broadcast to manager for now
+  });
+  if(error) { errorEl.textContent = error.message; return; }
+  document.getElementById('replyText').value='';
   await loadMessages();
+});
 
-  // log sale
-  logSaleBtn.addEventListener('click', async ()=>{
-    saleMsg.textContent=''; logSaleBtn.disabled = true; logSaleBtn.textContent='Logging...';
-    const pkg = packageTypeEl.value, amount = Number(amountEl.value||0);
-    if (!pkg) { saleMsg.textContent='Select a package'; logSaleBtn.disabled=false; logSaleBtn.textContent='Add Sale'; return; }
-    if (!amount || amount <= 0) { saleMsg.textContent='Enter a valid amount'; logSaleBtn.disabled=false; logSaleBtn.textContent='Add Sale'; return; }
-    try {
-      const { error: insertErr } = await supabase.from('sales_log').insert([{ agent_id: agentRow.id, package_type: pkg, amount, date: new Date().toISOString() }]);
-      if (insertErr) throw insertErr;
-      // call secure RPC to increment agents.sales
-      const { error: rpcErr } = await supabase.rpc('increment_agent_sales_secure', { agent_uuid: agentRow.id, add_amount: amount });
-      if (rpcErr) console.warn('RPC error', rpcErr);
-      await loadAgent();
-      saleMsg.style.color='lightgreen'; saleMsg.textContent = `Sale logged: ${pkg} R${amount}`;
-      packageTypeEl.selectedIndex = 0; amountEl.value='';
-    } catch (err) {
-      console.error(err);
-      saleMsg.style.color='salmon';
-      saleMsg.textContent = 'Error logging sale: ' + (err.message || JSON.stringify(err));
-    } finally {
-      logSaleBtn.disabled=false; logSaleBtn.textContent='Add Sale';
-    }
-  });
+// Real-time: refresh on new messages or agent update
+supabase.channel('agent-updates')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload=> loadMessages())
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'agents', filter: `id=eq.${userId}` }, payload=> loadAgent())
+  .subscribe();
 
-  // reply
-  replyBtn.addEventListener('click', async ()=>{
-    const text = replyInput.value.trim(); if (!text) return;
-    const { error } = await supabase.from('messages').insert([{ content: text, from_id: agentRow.id, to_id: null, timestamp: new Date().toISOString() }]);
-    if (error) return alert('Reply failed: '+error.message);
-    replyInput.value=''; loadMessages();
-  });
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{ await supabase.auth.signOut(); localStorage.clear(); window.location.href='index.html';});
 
-  logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); localStorage.clear(); location.href='index.html'; });
+loadAgent();
+loadMessages();
 </script>
 </body>
 </html>
