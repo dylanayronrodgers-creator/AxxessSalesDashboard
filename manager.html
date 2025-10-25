@@ -1,61 +1,68 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Manager Dashboard — Axxess</title>
+  <title>Manager Dashboard</title>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="supabase-config.js"></script>
   <style>
-    /* condensed styles for manager page (glass theme) */
-    body{font-family:Inter,system-ui,Arial;color:#fff;background:linear-gradient(180deg,#041a39,#021029);margin:0;padding:32px;}
-    h1{color:#00e0ff;text-align:center;text-shadow:0 6px 24px rgba(0,224,255,0.08)}
-    .glass{background:rgba(255,255,255,0.03);border-radius:14px;padding:18px;margin:20px auto;max-width:1100px;box-shadow:0 10px 40px rgba(0,0,0,0.45);backdrop-filter:blur(8px)}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .input, select{padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.03);color:#fff;min-width:160px}
-    .btn{background:#00e0ff;border:none;color:#00263e;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03);color:#dff}
-    th{color:#00e0ff}
-    .highlight-warning{background:linear-gradient(90deg, rgba(255,174,66,0.06), transparent);}
-    .highlight-good{background:linear-gradient(90deg, rgba(47,229,161,0.06), transparent);}
+    .top-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end}
+    .left-col{flex:1}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .month{min-width:150px}
+    .msg-error{color:#ff7b7b;margin-top:10px}
   </style>
 </head>
 <body>
-  <h1>Manager Dashboard</h1>
-
-  <div class="glass">
-    <h2>Add Agent</h2>
-    <div class="row">
-      <input id="name" class="input" placeholder="Full name"/>
-      <input id="email" class="input" placeholder="email@example.com"/>
-      <input id="password" class="input" placeholder="temporary password"/>
-      <select id="teamSelect" class="input"><option value="">Loading teams…</option></select>
-      <input id="target" class="input" placeholder="Target (R)" type="number"/>
-      <button id="addBtn" class="btn">Add</button>
-    </div>
-    <div id="addMsg" style="margin-top:10px;color:#ffd;"></div>
-  </div>
-
-  <div class="glass">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <h2>Agent Performance</h2>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="monthPicker" type="month" class="input"/>
-        <button id="downloadBtn" class="btn">Download CSV</button>
+  <div class="container">
+    <div class="header">
+      <div class="brand">
+        <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="Axxess Logo" class="dashboard-logo" onclick="location.href='index.html'">
+        <div>
+          <div class="small">Manager</div>
+          <div style="font-weight:700;color:#dff">Manager Dashboard</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="logoutBtn" class="btn ghost">Logout</button>
       </div>
     </div>
 
-    <table>
-      <thead>
-        <tr><th>Name</th><th>Team</th><th>Target (R)</th><th>Month Sales (R)</th><th>Progress</th><th>Status</th></tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+    <div class="card">
+      <h2>Add Agent</h2>
+      <div class="row controls">
+        <input id="name" class="input" placeholder="Full name"/>
+        <input id="email" class="input" placeholder="email@example.com"/>
+        <input id="password" class="input" placeholder="temporary password"/>
+        <select id="teamSelect" class="input">
+          <option value="">Loading teams…</option>
+        </select>
+        <input id="target" class="input" placeholder="Target (R)" type="number"/>
+        <button id="addBtn" class="btn">Add</button>
+      </div>
+      <div id="addMsg" class="msg-error"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>Agent Performance</h2>
+        <div>
+          <input id="monthPicker" class="input month" type="month" />
+          <button id="downloadBtn" class="btn">Download CSV</button>
+        </div>
+      </div>
+
+      <table class="table">
+        <thead><tr><th>Name</th><th>Team</th><th>Target (R)</th><th>Month Sales (R)</th><th>Progress</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
   </div>
 
 <script type="module">
   import { supabase } from './supabase-config.js';
+  const API_CREATE = 'https://sales-dashboard-axxess.vercel.app/api/create-user';
 
   const teamSelect = document.getElementById('teamSelect');
   const addBtn = document.getElementById('addBtn');
@@ -63,104 +70,98 @@
   const tbody = document.getElementById('tbody');
   const monthPicker = document.getElementById('monthPicker');
   const downloadBtn = document.getElementById('downloadBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
 
-  // init month picker to current month
-  const now = new Date();
-  monthPicker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  monthPicker.value = new Date().toISOString().slice(0,7);
 
   async function loadTeams(){
     const { data, error } = await supabase.from('teams').select('*').order('id');
-    if (error) { console.error(error); teamSelect.innerHTML = '<option value="">—</option>'; return; }
-    teamSelect.innerHTML = '<option value="">Select Team (or leave blank)</option>';
-    data.forEach(t => {
-      const opt = document.createElement('option'); opt.value = t.id || t.name; opt.textContent = t.name; teamSelect.appendChild(opt);
+    teamSelect.innerHTML = '<option value="">Unassigned</option>';
+    (data||[]).forEach(t => {
+      const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; teamSelect.appendChild(o);
     });
   }
   await loadTeams();
 
   async function loadAgentStats(year, month){
-    // compute month window
     const start = new Date(year, month-1, 1).toISOString();
     const end = new Date(year, month, 1).toISOString();
 
-    // agents
     const { data: agents } = await supabase.from('agents').select('*').order('name');
-    // sales in month
     const { data: salesRows } = await supabase.from('sales_log').select('agent_id, amount, date').gte('date', start).lt('date', end);
 
     const sums = {};
     (salesRows||[]).forEach(r => sums[r.agent_id] = (sums[r.agent_id]||0) + Number(r.amount||0));
 
     tbody.innerHTML = '';
-    const today = new Date();
-    const day = today.getDate();
-    agents.forEach(a => {
-      const monthSales = sums[a.id] || 0;
-      const target = Number(a.target || 0);
-      const percent = target > 0 ? Math.min(100, (monthSales / target)*100) : 0;
-      const atRisk = (day >= 22 && percent < 60);
-      const status = percent >= 100 ? 'Met' : atRisk ? 'At Risk' : 'On Track';
+    const today = new Date(); const day = today.getDate();
+    (agents||[]).forEach(a => {
+      const monthSales = sums[a.id]||0;
+      const target = Number(a.target||0);
+      const pct = target>0 ? Math.min(100,(monthSales/target)*100) : 0;
+      const atRisk = (day >= 22 && pct < 60) && target>0;
+      const status = pct>=100 ? 'Met' : atRisk ? 'At Risk' : 'On Track';
       const tr = document.createElement('tr');
-      tr.className = percent >= 100 ? 'highlight-good' : atRisk ? 'highlight-warning' : '';
-      tr.innerHTML = `<td>${a.name}</td><td>${a.team_id||'—'}</td><td>${Number(target).toLocaleString()}</td><td>${monthSales.toLocaleString()}</td><td>${percent.toFixed(1)}%</td><td>${status}</td>`;
+      tr.className = pct>=100 ? 'highlight-good' : atRisk ? 'highlight-warning' : '';
+      tr.innerHTML = `<td>${a.name}</td><td>${a.team_id||'—'}</td><td>${target.toLocaleString()}</td><td>${monthSales.toLocaleString()}</td><td>${pct.toFixed(1)}%</td><td>${status}</td>
+        <td><button class="btn ghost" data-id="${a.id}" onclick="deleteAgent(this.dataset.id)">Delete</button></td>`;
       tbody.appendChild(tr);
     });
   }
 
-  // initial load
-  (async ()=>{
-    const [y,m] = monthPicker.value.split('-');
-    await loadAgentStats(Number(y), Number(m));
-  })();
+  window.deleteAgent = async (id) => {
+    if (!confirm('Delete this agent?')) return;
+    const { error } = await supabase.from('agents').delete().eq('id', id);
+    if (error) return alert('Delete failed: '+error.message);
+    const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y),Number(m));
+  };
 
-  // realtime subscriptions
-  supabase.channel('manager-sub')
-    .on('postgres_changes', { event: '*', schema:'public', table:'agents' }, payload => {
-      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m));
-    })
-    .on('postgres_changes', { event: '*', schema:'public', table:'sales_log' }, payload => {
-      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m));
-    })
+  // initial load
+  (async ()=>{ const [y,m] = monthPicker.value.split('-'); await loadAgentStats(Number(y),Number(m)); })();
+
+  // realtime
+  supabase.channel('manager-ch')
+    .on('postgres_changes', { event:'*', schema:'public', table:'agents' }, ()=>{ const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y),Number(m)); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'sales_log' }, ()=>{ const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y),Number(m)); })
     .subscribe();
 
-  addBtn.addEventListener('click', async () => {
+  addBtn.addEventListener('click', async ()=>{
+    addMsg.textContent=''; addBtn.disabled=true;
     const name = document.getElementById('name').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value.trim();
     const team_id = teamSelect.value || null;
-    const target = Number(document.getElementById('target').value || 0);
-    if (!email || !password) { addMsg.textContent = 'Email & password required'; addMsg.style.color='orange'; return; }
-    addMsg.textContent = 'Creating...';
+    const target = Number(document.getElementById('target').value||0);
+    if (!email || !password) { addMsg.textContent='Email & password required'; addBtn.disabled=false; return; }
+
     try {
-      const res = await fetch('/api/create-user', {
-        method:'POST', headers:{'content-type':'application/json'},
-        body: JSON.stringify({ name, email, password, team_id, target })
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || json.message || 'Failed');
-      addMsg.textContent = `Created ${json.email}`;
-      addMsg.style.color='lightgreen';
+      const resp = await fetch(API_CREATE, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ name, email, password, team_id, target }) });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || JSON.stringify(json));
+      addMsg.style.color='lightgreen'; addMsg.textContent = `Created ${json.email}`;
       document.getElementById('name').value=''; document.getElementById('email').value=''; document.getElementById('password').value=''; document.getElementById('target').value='';
-      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m));
+      const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y),Number(m));
     } catch (err) {
-      addMsg.textContent = err.message; addMsg.style.color='salmon';
-    }
+      addMsg.style.color='salmon'; addMsg.textContent = `Unexpected token '<', '<html>...' error usually means the API function crashed — check Vercel logs. Details: ${err.message}`;
+    } finally { addBtn.disabled=false; }
   });
 
-  monthPicker.addEventListener('change', ()=>{ const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y), Number(m)); });
+  monthPicker.addEventListener('change', ()=>{ const [y,m] = monthPicker.value.split('-'); loadAgentStats(Number(y),Number(m)); });
 
-  downloadBtn.addEventListener('click', async () => {
+  downloadBtn.addEventListener('click', async ()=>{
     const [y,m] = monthPicker.value.split('-');
-    const start = new Date(Number(y), Number(m)-1, 1).toISOString();
-    const end = new Date(Number(y), Number(m), 1).toISOString();
-    const { data } = await supabase.from('sales_log').select('agent_id, package_type, amount, date').gte('date', start).lt('date', end);
-    if (!data || data.length === 0) return alert('No data for month');
+    const start = new Date(Number(y), Number(m)-1,1).toISOString();
+    const end = new Date(Number(y), Number(m),1).toISOString();
+    const { data } = await supabase.from('sales_log').select('agent_id, package_type, amount, date').gte('date',start).lt('date',end);
+    if (!data || !data.length) return alert('No sales for month');
     const { data: agents } = await supabase.from('agents').select('id, name');
     const map = {}; (agents||[]).forEach(a=>map[a.id]=a.name);
-    const rows = data.map(r => ({ agent: map[r.agent_id]||r.agent_id, package_type: r.package_type, amount: r.amount, date: r.date }));
+    const rows = data.map(r => ({ agent: map[r.agent_id]||r.agent_id, package_type:r.package_type, amount:r.amount, date:r.date }));
     const csv = [Object.keys(rows[0]).join(',')].concat(rows.map(r=>Object.values(r).map(v=>`"${v}"`).join(','))).join('\n');
     const blob = new Blob([csv], { type:'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `sales_${y}_${m}.csv`; a.click();
   });
+
+  logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); localStorage.clear(); location.href='index.html'; });
 </script>
 </body>
 </html>
