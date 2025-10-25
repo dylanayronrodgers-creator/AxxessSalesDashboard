@@ -1,120 +1,123 @@
-<!doctype html>
-<html>
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Axxess Sales Dashboard — Login</title>
-  <link rel="stylesheet" href="styles.css">
-  <script type="module" src="supabase-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    .login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:74vh}
-    .login-box{width:800px;max-width:95%;padding:28px;border-radius:14px}
-    .role-row{display:flex;gap:12px;align-items:center;margin:16px 0}
-    .agent-select{min-width:300px}
-    .login-footer{margin-top:12px;text-align:center;color:var(--muted)}
+    :root{
+      --bg:#ffffff; --card:#f5f8fb; --accent:#00c6d4; --text:#0b2b3a;
+      --muted:#6b7c86; --glass: rgba(255,255,255,0.8);
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,Helvetica,Arial,sans-serif}
+    body{margin:0;background:linear-gradient(180deg,#f7fbff 0,#ffffff 100%);color:var(--text)}
+    .container{max-width:900px;margin:48px auto;padding:24px}
+    .logo{display:flex;align-items:center;gap:16px}
+    .logo img{width:64px;height:64px;border-radius:8px}
+    h1{margin:8px 0 24px;font-size:28px;color:var(--text)}
+    .card{background:var(--card);border-radius:12px;padding:28px;box-shadow:0 6px 20px rgba(14,30,37,0.06)}
+    label{display:block;margin:8px 0 6px;color:var(--muted);font-size:14px}
+    select,input{width:100%;padding:12px;border-radius:8px;border:1px solid #d7e2ea;background:white}
+    .row{display:flex;gap:12px}
+    .row > *{flex:1}
+    .actions{display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:16px}
+    .btn{background:var(--accent);color:white;padding:10px 18px;border-radius:10px;border:none;cursor:pointer}
+    .hint{color:var(--muted);margin-top:10px}
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div class="brand">
-        <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="Axxess Logo" class="dashboard-logo" onclick="location.href='index.html'">
+    <div class="logo">
+      <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="Axxess logo">
+      <div>
+        <h1>Axxess Sales Dashboard</h1>
+        <div style="color:var(--muted)">Login to access Agent, Manager or TV dashboards.</div>
       </div>
-      <div></div>
     </div>
 
-    <h1 class="h1">Axxess Sales Dashboard</h1>
+    <div style="height:18px"></div>
 
-    <div class="card login-box">
-      <div class="login-wrap">
-        <p class="small">Login to access your dashboard</p>
+    <div class="card">
+      <label>Select Role</label>
+      <select id="role">
+        <option value="">Choose role…</option>
+        <option value="agent">Agent</option>
+        <option value="manager">Manager</option>
+        <option value="tv">TV Dashboard</option>
+      </select>
 
-        <div class="role-row">
-          <label class="small">Select Role</label>
-          <select id="role" class="input">
-            <option value="">Choose...</option>
-            <option value="agent">Agent</option>
-            <option value="manager">Manager</option>
-            <option value="tv">TV</option>
-          </select>
-
-          <div id="agentArea" style="display:none;align-items:center;">
-            <select id="agentSelect" class="input agent-select"><option>Loading...</option></select>
-          </div>
-
-          <input id="emailInput" class="input" placeholder="Email" style="display:none;">
-          <input id="password" class="input" placeholder="Password" type="password" style="display:none;">
-          <button id="loginBtn" class="btn" disabled>Login</button>
-        </div>
-
-        <div class="login-footer">Choose a role then login. Use manager@axxess.co.za for manager tests.</div>
+      <div id="agentBlock" style="display:none;margin-top:12px">
+        <label>Agent</label>
+        <select id="agentSelect"><option>Loading…</option></select>
+        <label style="margin-top:12px">Password</label>
+        <input id="agentPwd" type="password" placeholder="Agent password">
       </div>
+
+      <div id="managerBlock" style="display:none;margin-top:12px">
+        <label>Email</label>
+        <input id="mgrEmail" type="email" value="stephanie@internet.co.za">
+        <label style="margin-top:12px">Password</label>
+        <input id="mgrPwd" type="password">
+      </div>
+
+      <div class="actions">
+        <button id="loginBtn" class="btn" disabled>Login</button>
+      </div>
+
+      <p class="hint">Tip: Use <b>stephanie@internet.co.za</b> for manager tests. Agent dropdown is public-only view (no sales shown).</p>
     </div>
   </div>
 
   <script type="module">
     import { supabase } from './supabase-config.js';
-    const roleEl = document.getElementById('role');
-    const agentArea = document.getElementById('agentArea');
+    const role = document.getElementById('role');
+    const agentBlock = document.getElementById('agentBlock');
+    const managerBlock = document.getElementById('managerBlock');
     const agentSelect = document.getElementById('agentSelect');
-    const emailInput = document.getElementById('emailInput');
-    const passwordInput = document.getElementById('password');
-    const loginBtn = document.getElementById('loginBtn');
+    const btn = document.getElementById('loginBtn');
 
-    roleEl.addEventListener('change', async () => {
-      const role = roleEl.value;
-      loginBtn.disabled = !role;
-      // show fields depending on role
-      if (role === 'agent') {
-        agentArea.style.display = 'inline-flex';
-        emailInput.style.display='none'; passwordInput.style.display='inline-block';
-        // fetch public agent list (id, name, email)
-        const { data, error } = await supabase.from('agents').select('id,name,email').order('name');
-        agentSelect.innerHTML = '<option value="">Select Agent...</option>';
-        (data||[]).forEach(a => agentSelect.innerHTML += `<option value="${a.id}" data-email="${a.email}">${a.name} (${a.email})</option>`);
-      } else if (role === 'manager') {
-        agentArea.style.display='none'; emailInput.style.display='inline-block'; passwordInput.style.display='inline-block';
-        emailInput.value = 'manager@axxess.co.za'; passwordInput.value = '';
-      } else if (role === 'tv') {
-        window.location.href = 'tv.html';
-      } else {
-        agentArea.style.display='none'; emailInput.style.display='none'; passwordInput.style.display='none';
+    role.addEventListener('change', async () => {
+      const r = role.value;
+      agentBlock.style.display = r === 'agent' ? 'block' : 'none';
+      managerBlock.style.display = r === 'manager' ? 'block' : 'none';
+      btn.disabled = !r;
+      if (r === 'agent') {
+        // public agent list (only id,name,email)
+        const { data } = await supabase
+          .from('agents')
+          .select('id, name, email');
+        agentSelect.innerHTML = '<option value="">Choose agent…</option>';
+        (data||[]).forEach(a => agentSelect.innerHTML += `<option value="${a.id}">${a.name} — ${a.email}</option>`);
       }
     });
 
-    // agent select -> fill email
-    agentSelect.addEventListener('change', (e)=>{
-      const opt = agentSelect.options[agentSelect.selectedIndex];
-      if (!opt) return;
-      emailInput.value = opt.dataset.email || '';
-    });
-
-    loginBtn.addEventListener('click', async () => {
-      const role = roleEl.value;
-      let email, password;
-      if (role === 'agent') {
-        const agentId = agentSelect.value;
-        if (!agentId) return alert('Select an agent');
-        email = agentSelect.options[agentSelect.selectedIndex].dataset.email;
-        password = passwordInput.value;
+    btn.addEventListener('click', async () => {
+      const r = role.value;
+      if (r === 'tv') return window.location.href = 'tv.html';
+      let email,password;
+      if (r === 'agent') {
+        const id = agentSelect.value;
+        if (!id) return alert('Select an agent');
+        const { data } = await supabase.from('agents').select('email').eq('id', id).single();
+        email = data.email;
+        password = document.getElementById('agentPwd').value;
       } else {
-        email = emailInput.value;
-        password = passwordInput.value;
+        email = document.getElementById('mgrEmail').value;
+        password = document.getElementById('mgrPwd').value;
       }
-      if (!email || !password) return alert('Email and password required');
-
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return alert(error.message || JSON.stringify(error));
-      // set role in user metadata for manager
-      if (role === 'manager') {
+      if (error) return alert(error.message);
+      // set role metadata for manager on login (optional)
+      if (r === 'manager') {
         await supabase.auth.updateUser({ data: { app_role: 'manager' } }).catch(()=>{});
       } else {
         await supabase.auth.updateUser({ data: { app_role: 'agent' } }).catch(()=>{});
       }
-      // save and redirect
-      localStorage.setItem('role', role);
-      localStorage.setItem('userId', data.user.id);
-      window.location.href = role === 'manager' ? 'manager.html' : 'agent.html';
+      localStorage.setItem('role', r);
+      localStorage.setItem('userId', data.user?.id || '');
+      window.location.href = r === 'manager' ? 'manager.html' : 'agent.html';
     });
   </script>
 </body>
