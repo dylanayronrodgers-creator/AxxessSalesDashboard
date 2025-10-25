@@ -1,79 +1,64 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Axxess Live TV</title>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Axxess Live Sales — TV</title>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="supabase-config.js"></script>
   <style>
-    body{font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#041a39,#021029);color:#fff;margin:0;padding:24px}
-    h1{text-align:center;color:#00e0ff;text-shadow:0 8px 40px rgba(0,224,255,0.08)}
-    #container{max-width:1400px;margin:18px auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
-    .card{background:rgba(255,255,255,0.03);border-radius:14px;padding:18px;backdrop-filter:blur(6px);box-shadow:0 10px 30px rgba(0,0,0,0.45)}
-    .name{color:#00e0ff;font-weight:700}
-    .progress{height:12px;background:rgba(255,255,255,0.05);border-radius:8px;overflow:hidden;margin-top:12px}
-    .fill{height:100%;background:linear-gradient(90deg,#00e0ff,#7cffc8);width:0;transition:width 0.8s}
-    .teamTitle{color:#9ff;text-transform:uppercase;margin:6px 0 12px;font-weight:700}
-    footer{margin-top:24px;text-align:center;color:#9cf}
+    #container{max-width:1400px;margin:18px auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px}
+    .card{padding:20px}
+    .clock{color:#bfe;text-align:center;margin-bottom:12px}
+    .footer-msg{color:var(--accent);text-align:center;margin-top:28px;font-weight:700}
   </style>
 </head>
 <body>
-  <h1>Axxess Live Sales</h1>
-  <div id="clock" style="text-align:center;color:#bfefff;margin-bottom:12px"></div>
-  <div id="container"></div>
-  <footer id="footer">Keep hitting those targets 🚀</footer>
+  <div class="container" style="max-width:1300px;margin:12px auto;">
+    <div style="text-align:center">
+      <img src="https://i.ibb.co/1GrhnMc4/images.jpg" class="dashboard-logo" alt="Axxess Logo">
+      <h1 class="h1">Axxess Live Sales</h1>
+      <div id="clock" class="clock"></div>
+    </div>
+
+    <div id="grid" style="width:100%"></div>
+    <div class="footer-msg" id="motivate">Keep hitting those targets 🚀</div>
+  </div>
 
 <script type="module">
   import { supabase } from './supabase-config.js';
-
-  const container = document.getElementById('container');
+  const grid = document.getElementById('grid');
   const clock = document.getElementById('clock');
+  const motivate = document.getElementById('motivate');
+  const msgs = ["Keep pushing — every sale counts!", "Aim high — close those deals!", "Great job team — keep the momentum!"];
 
-  function tick(){ const d = new Date(); clock.textContent = d.toLocaleDateString() + ' · ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
-  setInterval(tick, 1000); tick();
+  function tick(){ const d=new Date(); clock.textContent = d.toLocaleDateString() + ' · ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+  setInterval(tick,1000); tick();
 
   async function loadAll(){
-    // fetch teams mapping
     const { data: teams } = await supabase.from('teams').select('*');
-    const teamMap = {}; (teams||[]).forEach(t=>teamMap[t.id]=t.name);
-
+    const tmap = {}; (teams||[]).forEach(t=>tmap[t.id]=t.name);
     const { data: agents } = await supabase.from('agents').select('*').order('team_id').order('name');
-    if (!agents) return;
-    container.innerHTML = '';
-
-    // group by team name
-    const grouped = agents.reduce((acc,a)=>{
-      const k = teamMap[a.team_id] || 'Unassigned';
-      (acc[k] ||= []).push(a);
-      return acc;
-    }, {});
-
-    // render each team
-    Object.keys(grouped).forEach(teamName=>{
-      const teamDiv = document.createElement('div');
-      teamDiv.innerHTML = `<div class="teamTitle">${teamName} (${grouped[teamName].length})</div>`;
-      grouped[teamName].forEach(a=>{
-        const pct = a.target ? Math.min(100, (a.sales / a.target)*100).toFixed(1) : 0;
-        const card = document.createElement('div'); card.className='card';
-        card.innerHTML = `<div class="name">${a.name}</div>
-          <div style="color:#cfe">Target: R${Number(a.target||0).toLocaleString()} &nbsp; • &nbsp; Sales: R${Number(a.sales||0).toLocaleString()}</div>
-          <div class="progress"><div class="fill" style="width:${pct}%"></div></div>
-          <div style="margin-top:8px;color:#bfe">${pct}% achieved</div>`;
-        teamDiv.appendChild(card);
-      });
-      container.appendChild(teamDiv);
+    grid.innerHTML='';
+    (agents||[]).forEach(a=>{
+      const pct = a.target ? Math.min(100,(a.sales||0)/a.target*100).toFixed(1) : 0;
+      const card = document.createElement('div'); card.className='card';
+      card.innerHTML = `<div style="font-weight:700;color:var(--accent);font-size:20px">${a.name}</div>
+        <div class="small">Team: ${tmap[a.team_id]||'—'}</div>
+        <div style="margin-top:8px">Target: R${Number(a.target||0).toLocaleString()} • Sales: R${Number(a.sales||0).toLocaleString()}</div>
+        <div class="progress" style="margin-top:10px"><div class="fill" style="width:${pct}%"></div></div>
+        <div style="margin-top:8px;text-align:center">${pct}% achieved</div>`;
+      grid.appendChild(card);
     });
+    // rotate motivate
+    motivate.textContent = msgs[Math.floor(Math.random()*msgs.length)];
   }
 
-  loadAll();
-  setInterval(loadAll, 7000);
+  loadAll(); setInterval(loadAll,7000);
 
-  supabase.channel('tv-sub')
-    .on('postgres_changes', { event: '*', schema:'public', table:'agents' }, payload => loadAll())
-    .on('postgres_changes', { event: '*', schema:'public', table:'sales_log' }, payload => loadAll())
+  supabase.channel('tv-ch')
+    .on('postgres_changes', { event:'*', schema:'public', table:'agents' }, loadAll)
+    .on('postgres_changes', { event:'*', schema:'public', table:'sales_log' }, loadAll)
     .subscribe();
-
 </script>
 </body>
 </html>
