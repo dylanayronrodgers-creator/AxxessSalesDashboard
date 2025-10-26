@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manager Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="card logo-row">
+  <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="logo" class="logo-img">
+  <div><div style="font-size:12px;color:var(--muted)">Manager</div><div style="font-weight:700">Manager Dashboard</div></div>
+  <div style="margin-left:auto"><button id="logoutBtn">Logout</button></div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <h2>Add Agent</h2>
+    <div class="form-row">
+      <input id="aName" placeholder="Name">
+      <input id="aEmail" placeholder="Email">
+      <input id="aPwd" placeholder="Password">
+      <select id="aTeam"><option value="">Select team</option><option value="1">Sales</option><option value="2">ClientCare</option></select>
+      <input id="aTarget" placeholder="Target (R)" type="number" value="0">
+      <button id="addAgentBtn">Add</button>
+    </div>
+    <div id="mgrError" class="error"></div>
+  </section>
+
+  <section class="card">
+    <h2>Agent Performance</h2>
+    <div style="display:flex;justify-content:flex-end;gap:12px"><input id="monthPicker" type="month"><button id="downloadCSV">Download CSV</button></div>
+    <table><thead><tr><th>Name</th><th>Team</th><th>Target (R)</th><th>Month Sales (R)</th><th>Progress</th><th>Status</th><th>Actions</th></tr></thead><tbody id="agentsTable"></tbody></table>
+  </section>
+</main>
+
+<script type="module">
+import {{ supabase }} from './supabase-config.js';
+
+const logoutBtn = document.getElementById('logoutBtn');
+const addBtn = document.getElementById('addAgentBtn');
+const err = document.getElementById('mgrError');
+const agentsTable = document.getElementById('agentsTable');
+
+logoutBtn.addEventListener('click', async ()=> {{
+  await supabase.auth.signOut();
+  localStorage.clear();
+  window.location.href='index.html';
+}});
+
+addBtn.addEventListener('click', async ()=> {{
+  err.textContent='';
+  const name = document.getElementById('aName').value.trim();
+  const email = document.getElementById('aEmail').value.trim();
+  const password = document.getElementById('aPwd').value.trim();
+  const team_id = document.getElementById('aTeam').value || null;
+  const target = Number(document.getElementById('aTarget').value || 0);
+  if(!name||!email||!password) return err.textContent='Name, email and password required';
+
+  try {{
+    // Create auth & agent via serverless function
+    const res = await fetch('/api/add-agent.js', {{
+      method:'POST',
+      headers:{{'content-type':'application/json'}},
+      body: JSON.stringify({{ name, email, password, team: team_id ? parseInt(team_id): null, target }})
+    }});
+    const payload = await res.json();
+    if(!res.ok) return err.textContent = payload?.error || JSON.stringify(payload);
+
+    // reload agents
+    loadAgents();
+    document.getElementById('aName').value='';document.getElementById('aEmail').value='';document.getElementById('aPwd').value='';
+  }} catch (e) {{
+    err.textContent = e.message || String(e);
+  }}
+}});
+
+async function loadAgents(){{
+  const {{ data, error }} = await supabase.from('agents').select('id,full_name,email,target,sales,team_id').order('full_name');
+  if(error) return console.error(error);
+  agentsTable.innerHTML = (data||[]).map(a => {{
+    const progress = a.target > 0 ? (Number(a.sales||0)/Number(a.target))*100 : 0;
+    const status = progress < 30 ? 'At Risk' : progress < 80 ? 'On Track' : 'Ahead';
+    return `<tr>
+      <td>${{a.full_name}}</td>
+      <td>${{a.team_id || '—'}}</td>
+      <td>${{Number(a.target||0).toLocaleString()}}</td>
+      <td>0</td>
+      <td>${{progress.toFixed(1)}}%</td>
+      <td>${{status}}</td>
+      <td><button onclick="deleteAgent('${{a.id}}')">Delete</button></td>
+    </tr>`;
+  }}).join('');
+}}
+
+window.deleteAgent = async (id) => {{
+  if(!confirm('Delete agent?')) return;
+  const {{ error }} = await supabase.from('agents').delete().eq('id', id);
+  if (error) return alert(error.message);
+  loadAgents();
+}};
+
+document.getElementById('downloadCSV').addEventListener('click', ()=>alert('CSV export uses Supabase sales_log, implement as needed'));
+
+loadAgents();
+</script>
+</body>
+</html>
