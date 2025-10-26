@@ -1,9 +1,10 @@
 // /api/add-agent.js
 import { createClient } from "@supabase/supabase-js";
 
+// ✅ Use SERVER-ONLY keys from environment
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzeG9ndGtxYnFkb2Jrc2hja2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMzkyOTMsImV4cCI6MjA3NjgxNTI5M30.Hcpx-DWykTsWY6kw0DyKaY2lppBfAk7X6MJKXeRHwMQ
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
@@ -13,12 +14,11 @@ export default async function handler(req, res) {
     }
 
     const { name, email, password, team, target } = req.body;
-
     if (!name || !email || !password || !team || !target) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // 1️⃣ Create the user in Supabase Auth
+    // 1️⃣ Create Supabase Auth user
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -27,24 +27,22 @@ export default async function handler(req, res) {
 
     if (authError) throw authError;
 
-    // 2️⃣ Add agent data in your `agents` table
-    const { data, error } = await supabase
-      .from("agents")
-      .insert([
-        {
-          name,
-          email,
-          team,
-          target,
-          user_id: authUser.user.id,
-        },
-      ]);
+    // 2️⃣ Insert into `agents` table
+    const { data, error } = await supabase.from("agents").insert([
+      {
+        id: authUser.user.id,
+        full_name: name,
+        email,
+        team,
+        target,
+      },
+    ]);
 
     if (error) throw error;
 
-    return res.status(200).json({ success: true, agent: data[0] });
+    return res.status(200).json({ success: true, data });
   } catch (err) {
-    console.error("Add Agent API error:", err);
-    return res.status(500).json({ error: err.message || "Internal server error" });
+    console.error("Add agent error:", err);
+    return res.status(500).json({ error: err.message });
   }
 }
