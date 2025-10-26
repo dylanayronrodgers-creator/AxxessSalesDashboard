@@ -56,100 +56,61 @@
   </div>
 </div>
 
-<script type="module">
-import { supabase } from './supabase-config.js';
-
-const userId = await (async()=>{ try { const s = localStorage.getItem('userId'); if(!s) window.location.href='index.html'; return s;} catch(e){return null}})();
-if(!userId) window.location.href='index.html';
-
-const addBtn = document.getElementById('addAgentBtn');
-const errorEl = document.getElementById('mgrError');
-const agentsTable = document.getElementById('agentsTable');
-const monthPicker = document.getElementById('monthPicker');
-
-addBtn.addEventListener('click', async ()=>{
-  errorEl.textContent='';
-  const name = document.getElementById('aName').value.trim();
-  const email = document.getElementById('aEmail').value.trim();
-  const password = document.getElementById('aPwd').value.trim();
-  const team_id = document.getElementById('aTeam').value || null;
-  const target = Number(document.getElementById('aTarget').value || 0);
-
-  if(!name||!email||!password) return errorEl.textContent='Name, email and password required';
-
-  // Call serverless function (Vercel) that uses service_role key to create auth user
-  try {
-    const res = await const res = await fetch('https://sales-dashboard-axxess.vercel.app/api/add-agent', {
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body: JSON.stringify({ email, password })
-    });
-    const payload = await res.json();
-    if (!res.ok) { errorEl.textContent = payload?.error?.message || JSON.stringify(payload); return; }
-
-    // Insert into agents table with the returned id
-    const { error } = await supabase.from('agents').insert({
-      id: payload.id,
-      name, email, target, sales:0, team_id: team_id ? parseInt(team_id) : null
-    });
-    if (error) { errorEl.textContent = error.message; return; }
-    // clear form and reload
-    document.getElementById('aName').value='';document.getElementById('aEmail').value='';document.getElementById('aPwd').value='';
-    loadAgents();
-  } catch (err) {
-    errorEl.textContent = `Unexpected token '<'... error usually means the API function crashed — check Vercel logs. Details: ${err.message}`;
-  }
+<script>
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  localStorage.clear();
+  window.location.href = 'index.html';
 });
 
-async function loadAgents(){
-  const { data, error } = await supabase.from('agents').select('id,name,email,target,sales,team_id').order('name');
-  if (error) { console.error(error); return; }
-  agentsTable.innerHTML = (data||[]).map(a => {
-    const monthSales = 0; // placeholder: we compute below by query for selected month (light on CPU in this example)
-    const progress = a.target > 0 ? (Number(a.sales||0) / Number(a.target))*100 : 0;
+const addBtn = document.getElementById('addAgentBtn');
+const agentsTable = document.getElementById('agentsTable');
+
+function loadAgents() {
+  const agents = JSON.parse(localStorage.getItem('agents') || '[]');
+  agentsTable.innerHTML = agents.map((a, i) => {
+    const progress = a.target > 0 ? (a.sales / a.target) * 100 : 0;
     const status = progress < 30 ? 'At Risk' : progress < 80 ? 'On Track' : 'Ahead';
-    return `<tr>
-      <td>${a.name}</td>
-      <td>${a.team_id || '—'}</td>
-      <td>${Number(a.target||0).toLocaleString()}</td>
-      <td>${monthSales}</td>
-      <td>${progress.toFixed(1)}%</td>
-      <td>${status}</td>
-      <td><button onclick="deleteAgent('${a.id}')">Delete</button></td>
-    </tr>`;
+    return `
+      <tr>
+        <td>${a.name}</td>
+        <td>${a.team}</td>
+        <td>${a.target.toLocaleString()}</td>
+        <td>${a.sales.toLocaleString()}</td>
+        <td>${progress.toFixed(1)}%</td>
+        <td>${status}</td>
+        <td><button onclick="deleteAgent(${i})">Delete</button></td>
+      </tr>`;
   }).join('');
 }
 
-window.deleteAgent = async (id) => {
-  if(!confirm('Delete agent?')) return;
-  const { error } = await supabase.from('agents').delete().eq('id', id);
-  if (error) return alert(error.message);
+window.deleteAgent = (index) => {
+  const agents = JSON.parse(localStorage.getItem('agents') || '[]');
+  agents.splice(index, 1);
+  localStorage.setItem('agents', JSON.stringify(agents));
   loadAgents();
 };
 
-document.getElementById('downloadCSV').addEventListener('click', async ()=>{
-  // fetch sales for the chosen month (or fallback to current month)
-  const month = monthPicker.value || `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-  const start = new Date(month + '-01T00:00:00Z').toISOString();
-  const end = new Date(new Date(start).getFullYear(), new Date(start).getMonth()+1, 1).toISOString();
+addBtn.addEventListener('click', () => {
+  const name = document.getElementById('aName').value.trim();
+  const email = document.getElementById('aEmail').value.trim();
+  const team = document.getElementById('aTeam').value;
+  const target = Number(document.getElementById('aTarget').value || 0);
 
-  const { data, error } = await supabase.from('sales_log').select('agent_id,package_type,amount,date').gte('date', start).lt('date', end);
-  if (error) return alert(error.message);
-  if (!data || data.length===0) return alert('No sales for period');
+  if (!name || !email || !team) return alert('Please fill all fields');
 
-  // map agent ids to names
-  const agentsRes = await supabase.from('agents').select('id,name');
-  const names = (agentsRes.data||[]).reduce((m, a)=> (m[a.id]=a.name, m), {});
-  const rows = data.map(r => [names[r.agent_id]||r.agent_id, r.package_type, r.amount, r.date]);
-  const csv = ['Agent,Package,Amount,Date', ...rows.map(r => r.map(String).map(c => `"${c.replace(/"/g,'""')}"`).join(','))].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `sales_${month}.csv`; a.click(); URL.revokeObjectURL(url);
+  const agents = JSON.parse(localStorage.getItem('agents') || '[]');
+  agents.push({ name, email, team, target, sales: 0 });
+  localStorage.setItem('agents', JSON.stringify(agents));
+
+  document.getElementById('aName').value = '';
+  document.getElementById('aEmail').value = '';
+  document.getElementById('aTarget').value = '';
+
+  loadAgents();
 });
-
-document.getElementById('logoutBtn').addEventListener('click', async ()=>{ await supabase.auth.signOut(); localStorage.clear(); window.location.href='index.html';});
 
 loadAgents();
 </script>
+
 </body>
 </html>
