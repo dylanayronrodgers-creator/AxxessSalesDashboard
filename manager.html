@@ -79,7 +79,7 @@ addBtn.addEventListener('click', async ()=>{
 
   // Call serverless function (Vercel) that uses service_role key to create auth user
   try {
-    const res = await fetch('/api/create-user', {
+    const res = await const res = await fetch('https://sales-dashboard-axxess.vercel.app/api/add-agent', {
       method:'POST',
       headers:{'content-type':'application/json'},
       body: JSON.stringify({ email, password })
