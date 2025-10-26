@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Axxess Sales Dashboard — Login</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="card logo-row">
+      <img src="https://i.ibb.co/1GrhnMc4/images.jpg" alt="logo" class="logo-img">
+      <h1>Axxess Sales Dashboard</h1>
+    </header>
+
+    <section class="card">
+      <h2>Login</h2>
+      <div class="form-row">
+        <input id="email" placeholder="Email" type="email">
+        <input id="password" placeholder="Password" type="password">
+        <select id="role">
+          <option value="agent">Agent</option>
+          <option value="manager">Manager</option>
+        </select>
+        <button id="loginBtn">Login</button>
+      </div>
+      <div id="loginError" class="error"></div>
+    </section>
+  </main>
+
+<script type="module">
+import {{ supabase }} from './supabase-config.js';
+
+const loginBtn = document.getElementById('loginBtn');
+const err = document.getElementById('loginError');
+
+loginBtn.addEventListener('click', async () => {{
+  err.textContent = '';
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const role = document.getElementById('role').value;
+
+  if (!email || !password) return err.textContent = 'Email and password required';
+
+  // try to sign in using Supabase Auth
+  const {{ data, error }} = await supabase.auth.signInWithPassword({{ email, password }});
+  if (error) {{
+    err.textContent = error.message || JSON.stringify(error);
+    return;
+  }}
+  // Save minimal session / role
+  localStorage.setItem('userId', data.user?.id || '');
+  localStorage.setItem('userEmail', email);
+  localStorage.setItem('userRole', role);
+
+  if (role === 'manager') window.location.href = 'manager.html';
+  else window.location.href = 'agent.html';
+}});
+</script>
+</body>
+</html>
