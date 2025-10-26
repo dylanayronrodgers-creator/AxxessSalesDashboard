@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TV — Live Sales</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="card logo-row"><img src="https://i.ibb.co/1GrhnMc4/images.jpg" class="logo-img"><h1>Axxess Live Sales</h1></header>
+<main class="wrap">
+  <section class="card" id="list"></section>
+</main>
+<script type="module">
+import {{ supabase }} from './supabase-config.js';
+
+async function load() {{
+  const {{ data }} = await supabase.from('agents').select('id,full_name,target,sales,team_id').order('full_name');
+  const el = document.getElementById('list');
+  el.innerHTML = (data||[]).map(a => `<div style="margin-bottom:18px"><h3>${{a.full_name}}</h3><div>Team: ${{a.team_id||'—'}}</div><div>Target: R${{(a.target||0).toLocaleString()}} • Sales: R${{(a.sales||0).toLocaleString()}}</div><div style="height:8px"></div><div style="background:#e6eef6;height:10px;border-radius:6px;overflow:hidden"><div style="background:#00a6c2;height:10px;width:${{a.target?((a.sales||0)/a.target*100):0}}%"></div></div></div>`).join('');
+}}
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
